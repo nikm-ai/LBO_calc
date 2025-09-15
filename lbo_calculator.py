@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.title("Simple LBO Calculator")
+st.header("LBO Calculator")
 
 purchase_price = st.number_input("Purchase Price ($M)", value=100)
 debt_percent = st.slider("Debt %", min_value=0, max_value=100, value=60)
