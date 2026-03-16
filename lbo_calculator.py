@@ -243,7 +243,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Chart constants ────────────────────────────────────────────────────────
-CHART_BG = "#FAF8F4"   # eggshell — readable in both light and dark mode
+CHART_BG = "#F5F0E8"   # manila — warm, distinct from white, readable in dark mode
 FONT_CH  = dict(size=12, color="#1a1a1a", family="DM Sans, Arial, sans-serif")
 LEGEND   = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
                 font=dict(size=11, color="#1a1a1a"), bgcolor="rgba(0,0,0,0)")
@@ -255,7 +255,7 @@ GREEN  = "#2e7d4f"; LGREEN = "#6ab06a"; LLGREEN= "#c2dfc2"
 RED    = "#b94040"; LRED   = "#c47a7a"
 AMBER  = "#c47a00"
 GRAY   = "#888888"
-CREAM  = "#FAF8F4"
+CREAM  = "#F5F0E8"
 
 SCEN_COLORS = ["#1a4f82", "#2e7d4f", "#b94040"]
 
@@ -263,8 +263,8 @@ def ax(title, grid=True):
     return dict(
         title=dict(text=title, font=dict(size=12, color="#333333")),
         tickfont=dict(size=11, color="#444444"),
-        gridcolor="#ece9e3" if grid else "rgba(0,0,0,0)",
-        linecolor="#ccc9c3", linewidth=1, showline=True,
+        gridcolor="#e8e0d0" if grid else "rgba(0,0,0,0)",
+        linecolor="#d4c9b8", linewidth=1, showline=True,
         showgrid=grid, zeroline=False, ticks="outside", ticklen=3,
     )
 
@@ -599,7 +599,7 @@ with col_wf:
         x=["Entry equity", "EBITDA growth", "Multiple change", "Debt paydown", "Exit equity"],
         y=[equity_entry, ev_from_growth, ev_from_multiple, total_paydown, exit_equity],
         measure=["absolute", "relative", "relative", "relative", "absolute"],
-        connector=dict(line=dict(color="#ccc9c3", width=1)),
+        connector=dict(line=dict(color="#d4c9b8", width=1)),
         increasing=dict(marker=dict(color=LGREEN)),
         decreasing=dict(marker=dict(color=LRED)),
         totals=dict(marker=dict(color=LBLUE)),
@@ -611,7 +611,7 @@ with col_wf:
         **BASE, height=300,
         yaxis=dict(**ax("Equity value ($M)"), tickprefix="$"),
         xaxis=dict(showgrid=False, tickfont=dict(size=11, color="#444444"),
-                   linecolor="#ccc9c3", linewidth=1, showline=True),
+                   linecolor="#d4c9b8", linewidth=1, showline=True),
         showlegend=False,
     )
     st.plotly_chart(fig_wf, use_container_width=True)
@@ -658,7 +658,7 @@ fig_lev.update_layout(
         title=dict(text="Multiple (x)", font=dict(size=12, color="#333333")),
         tickfont=dict(size=11, color="#444444"),
         showgrid=False, zeroline=False, overlaying="y", side="right",
-        linecolor="#ccc9c3", linewidth=1, showline=True,
+        linecolor="#d4c9b8", linewidth=1, showline=True,
     ),
 )
 st.plotly_chart(fig_lev, use_container_width=True)
@@ -722,7 +722,7 @@ with ch1:
             title=dict(text="EBITDA margin (%)", font=dict(size=12, color="#333333")),
             tickfont=dict(size=11, color="#444444"), ticksuffix="%",
             showgrid=False, zeroline=False, overlaying="y", side="right",
-            linecolor="#ccc9c3", linewidth=1, showline=True,
+            linecolor="#d4c9b8", linewidth=1, showline=True,
         ),
     )
     st.plotly_chart(fig_rev, use_container_width=True)
@@ -741,7 +741,7 @@ with ch2:
     ))
     fig_fcf.update_layout(
         **BASE, height=320, showlegend=False,
-        yaxis={**ax("Levered FCF ($M)"), "zeroline": True, "zerolinecolor": "#ccc9c3"},
+        yaxis={**ax("Levered FCF ($M)"), "zeroline": True, "zerolinecolor": "#d4c9b8"},
         xaxis=dict(**ax("Year"), dtick=1),
     )
     st.plotly_chart(fig_fcf, use_container_width=True)
@@ -958,10 +958,10 @@ fig_heat.update_layout(
     height=380,
     xaxis=dict(title=dict(text="Annual revenue growth rate", font=dict(size=12, color="#333333")),
                tickfont=dict(size=11, color="#444444"), showgrid=False,
-               linecolor="#ccc9c3", linewidth=1, showline=False),
+               linecolor="#d4c9b8", linewidth=1, showline=False),
     yaxis=dict(title=dict(text="Annual EBITDA margin expansion (bps)", font=dict(size=12, color="#333333")),
                tickfont=dict(size=11, color="#444444"), showgrid=False,
-               linecolor="#ccc9c3", linewidth=1, showline=False),
+               linecolor="#d4c9b8", linewidth=1, showline=False),
 )
 st.plotly_chart(fig_heat, use_container_width=True)
 st.markdown(f"""<div class="fig-caption">
