@@ -628,7 +628,7 @@ with ch2:
     ))
     fig_fcf.update_layout(
         **BASE, height=320, showlegend=False,
-        yaxis=dict(**ax("Levered FCF ($M)"), zeroline=True, zerolinecolor="#dddddd"),
+        yaxis={**ax("Levered FCF ($M)"), "zeroline": True, "zerolinecolor": "#dddddd"},
         xaxis=dict(**ax("Year"), dtick=1),
     )
     st.plotly_chart(fig_fcf, use_container_width=True)
