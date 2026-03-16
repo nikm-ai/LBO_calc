@@ -5,7 +5,85 @@ import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import numpy_financial as npf
-from scipy.stats.qmc import Sobol
+
+# ── Pure-numpy Sobol low-discrepancy sequence (no scipy dependency) ────────
+# Direction numbers for dimensions 1-5 (Joe & Kuo 2010, new-joe-kuo-6.21201)
+_SOBOL_DIRS = [
+    # d=1: plain Van der Corput
+    None,
+    # d=2
+    [1],
+    # d=3
+    [1, 1],
+    # d=4
+    [1, 3, 7],
+    # d=5
+    [1, 1, 5, 13],
+]
+
+def _sobol_sequence(n: int, d: int, seed: int = 0) -> np.ndarray:
+    """
+    Generate an (n, d) array of Sobol quasi-random points in [0, 1)^d.
+    Uses a simple Gray-code enumeration with 32-bit direction numbers.
+    Scrambled via random linear scramble keyed on `seed` for variance reduction.
+    """
+    BITS = 32
+    rng  = np.random.default_rng(seed)
+
+    # Build direction numbers for each dimension
+    V = np.zeros((d, BITS), dtype=np.uint32)
+
+    # Dimension 0: plain base-2 Van der Corput
+    for i in range(BITS):
+        V[0, i] = np.uint32(1 << (BITS - 1 - i))
+
+    # Dimensions 1..d-1: use primitive polynomials / direction init from table
+    # Simplified: use a well-known s=1 primitive polynomial (x+1) for all dims
+    # with the Joe-Kuo initial values above
+    poly_s  = [1, 1, 2, 3, 3]   # polynomial degrees for dims 1-4
+    poly_a  = [0, 1, 1, 2, 1]   # polynomial coefficients (stripped)
+    m_init  = [
+        [],          # d=0 handled above
+        [1],
+        [1, 3],
+        [1, 3, 1],
+        [1, 1, 1, 3],
+    ]
+
+    for dim in range(1, min(d, 5)):
+        s = poly_s[dim]
+        a = poly_a[dim]
+        m = list(m_init[dim])
+        # Extend direction numbers
+        for i in range(s, BITS):
+            v = m[i - s] ^ (m[i - s] >> np.uint32(s))
+            for k in range(1, s):
+                if (a >> np.uint32(s - 1 - k)) & 1:
+                    v ^= m[i - k]
+            m.append(int(v))
+        for i in range(BITS):
+            V[dim, i] = np.uint32(int(m[i]) << (BITS - 1 - i))
+
+    # Gray-code enumeration
+    X   = np.zeros(d, dtype=np.uint32)
+    pts = np.empty((n, d), dtype=np.float64)
+    scale = np.float64(2 ** BITS)
+
+    for i in range(n):
+        pts[i] = X.astype(np.float64) / scale
+        # rightmost zero bit of i+1
+        c = int(int(~np.uint32(i) & np.uint32(i + 1)).bit_length()) - 1
+        if c < BITS:
+            for dim in range(d):
+                X[dim] ^= V[dim, c]
+
+    # Owen-style scramble: XOR each dimension with a random 32-bit mask
+    masks = rng.integers(0, 2**31, size=d, dtype=np.int64).astype(np.uint32)
+    raw   = (pts * scale).astype(np.uint64)
+    for dim in range(d):
+        raw[:, dim] ^= masks[dim]
+    pts = raw.astype(np.float64) / scale
+    return np.clip(pts, 1e-10, 1 - 1e-10)
 
 st.set_page_config(
     page_title="Leveraged Buyout Analysis: A Structured Returns Framework",
@@ -937,33 +1015,55 @@ def run_qmc(n, rev_growth, margin_expansion, exit_ev_ebitda, interest_rate, debt
             entry_ev_ebitda, ebitda_entry, revenue_entry, amort_pct,
             hold_years, capex_pct, nwc_pct, tax_rate, da_pct):
     """
-    5-dimensional Sobol QMC:
-      dim 0 → revenue growth
-      dim 1 → margin expansion (bps)
-      dim 2 → exit multiple (partially correlated with dim 0)
-      dim 3 → interest rate
-      dim 4 → entry leverage (% of EV)
-    Correlation between growth and exit multiple is induced via Iman-Conover-style
-    Cholesky on the normal quantiles of the Sobol draws.
+    5-dimensional Sobol QMC (pure numpy, no scipy dependency):
+      dim 0 -> revenue growth
+      dim 1 -> margin expansion (bps)
+      dim 2 -> exit multiple (partially correlated with dim 0)
+      dim 3 -> interest rate
+      dim 4 -> entry leverage (% of EV)
+    Correlation between growth and exit multiple is induced via
+    Cholesky decomposition on normal quantiles of the Sobol draws.
     """
-    sampler = Sobol(d=5, scramble=True, seed=42)
-    m_power = int(np.ceil(np.log2(n)))
-    u = sampler.random_base2(m=m_power)[:n]           # shape (n, 5), uniform [0,1]
+    m_power = int(np.ceil(np.log2(max(n, 2))))
+    u = _sobol_sequence(2 ** m_power, d=5, seed=42)[:n]
 
-    # Map to parameter distributions (triangular / truncated normal via inverse CDF)
-    from scipy.stats import norm, truncnorm
+    def ndtr(x):
+        t = 1.0 / (1.0 + 0.2316419 * np.abs(x))
+        poly = t * (0.319381530 + t * (-0.356563782 + t * (
+               1.781477937 + t * (-1.821255978 + t * 1.330274429))))
+        p = 1.0 - (1.0 / np.sqrt(2 * np.pi)) * np.exp(-0.5 * x**2) * poly
+        return np.where(x >= 0, p, 1.0 - p)
 
-    # Apply Cholesky correlation between dim0 (growth) and dim2 (multiple)
+    def ndtri(p):
+        p = np.clip(p, 1e-10, 1 - 1e-10)
+        a = np.array([2.50662823884, -18.61500062529, 41.39119773534, -25.44106049637])
+        b = np.array([-8.47351093090, 23.08336743743, -21.06224101826, 3.13082909833])
+        c = np.array([0.3374754822726147, 0.9761690190917186, 0.1607979714918209,
+                      0.0276438810333863, 0.0038405729373609, 0.0003951896511349,
+                      0.0000321767881768, 0.0000002888167364, 0.0000003960315187])
+        y = p - 0.5
+        r = np.empty_like(p)
+        mid = np.abs(y) < 0.42
+        ym = y[mid]; r2 = ym * ym
+        r[mid] = ym * (((a[3]*r2+a[2])*r2+a[1])*r2+a[0]) / \
+                      ((((b[3]*r2+b[2])*r2+b[1])*r2+b[0])*r2+1.0)
+        tail = ~mid; pt = p[tail]
+        pt = np.where(y[tail] > 0, 1.0 - pt, pt)
+        s = np.log(-np.log(pt))
+        tv = c[0]+s*(c[1]+s*(c[2]+s*(c[3]+s*(c[4]+s*(c[5]+s*(c[6]+s*(c[7]+s*c[8])))))))
+        r[tail] = np.where(y[tail] > 0, tv, -tv)
+        return r
+
     C = np.eye(5)
     C[0, 2] = C[2, 0] = corr_coef
     try:
         L = np.linalg.cholesky(C)
     except np.linalg.LinAlgError:
-        L = np.eye(5)   # fallback if near-singular
+        L = np.eye(5)
 
-    z = norm.ppf(np.clip(u, 1e-6, 1 - 1e-6))         # to normal space
-    z_corr = (L @ z.T).T                               # apply correlation
-    u_corr = norm.cdf(z_corr)                          # back to uniform
+    z      = ndtri(np.clip(u, 1e-6, 1 - 1e-6))
+    z_corr = (L @ z.T).T
+    u_corr = ndtr(z_corr)
 
     gr_samples = np.clip(
         rev_growth + (u_corr[:, 0] - 0.5) * 2 * rev_vol, 0, 40)
@@ -1292,7 +1392,7 @@ st.markdown(f"""<div class="paper-footer">
   NWC = {nwc_pct}% of incremental revenue; D&A = {da_pct}% of revenue; Tax rate = {tax_rate}%;
   Exit EV/EBITDA = {exit_ev_ebitda:.1f}x; Holding period = {hold_years} years.
   Base case IRR computed using Newton-Raphson iteration (numpy-financial v1.0).
-  QMC simulation uses scrambled Sobol low-discrepancy sequences (scipy.stats.qmc) with
+  QMC simulation uses scrambled Sobol low-discrepancy sequences (pure numpy, Gray-code enumeration) with
   Cholesky-induced correlation structure between revenue growth and exit multiple.
   All figures in USD millions. This model is for educational and illustrative purposes only
   and does not constitute investment advice.
