@@ -6,54 +6,33 @@ from plotly.subplots import make_subplots
 import numpy_financial as npf
 
 # ── Pure-numpy Sobol low-discrepancy sequence (no scipy dependency) ────────
-# Direction numbers for dimensions 1-5 (Joe & Kuo 2010, new-joe-kuo-6.21201)
 _SOBOL_DIRS = [
-    # d=1: plain Van der Corput
     None,
-    # d=2
     [1],
-    # d=3
     [1, 1],
-    # d=4
     [1, 3, 7],
-    # d=5
     [1, 1, 5, 13],
 ]
 
 def _sobol_sequence(n: int, d: int, seed: int = 0) -> np.ndarray:
-    """
-    Generate an (n, d) array of Sobol quasi-random points in [0, 1)^d.
-    Uses a simple Gray-code enumeration with 32-bit direction numbers.
-    Scrambled via random linear scramble keyed on `seed` for variance reduction.
-    """
     BITS = 32
     rng  = np.random.default_rng(seed)
-
-    # Build direction numbers for each dimension
     V = np.zeros((d, BITS), dtype=np.uint32)
-
-    # Dimension 0: plain base-2 Van der Corput
     for i in range(BITS):
         V[0, i] = np.uint32(1 << (BITS - 1 - i))
-
-    # Dimensions 1..d-1: use primitive polynomials / direction init from table
-    # Simplified: use a well-known s=1 primitive polynomial (x+1) for all dims
-    # with the Joe-Kuo initial values above
-    poly_s  = [1, 1, 2, 3, 3]   # polynomial degrees for dims 1-4
-    poly_a  = [0, 1, 1, 2, 1]   # polynomial coefficients (stripped)
+    poly_s  = [1, 1, 2, 3, 3]
+    poly_a  = [0, 1, 1, 2, 1]
     m_init  = [
-        [],          # d=0 handled above
+        [],
         [1],
         [1, 3],
         [1, 3, 1],
         [1, 1, 1, 3],
     ]
-
     for dim in range(1, min(d, 5)):
         s = poly_s[dim]
         a = poly_a[dim]
         m = list(m_init[dim])
-        # Extend direction numbers
         for i in range(s, BITS):
             v = m[i - s] ^ (m[i - s] >> np.uint32(s))
             for k in range(1, s):
@@ -62,21 +41,15 @@ def _sobol_sequence(n: int, d: int, seed: int = 0) -> np.ndarray:
             m.append(int(v))
         for i in range(BITS):
             V[dim, i] = np.uint32(int(m[i]) << (BITS - 1 - i))
-
-    # Gray-code enumeration
     X   = np.zeros(d, dtype=np.uint32)
     pts = np.empty((n, d), dtype=np.float64)
     scale = np.float64(2 ** BITS)
-
     for i in range(n):
         pts[i] = X.astype(np.float64) / scale
-        # rightmost zero bit of i+1
         c = int(int(~np.uint32(i) & np.uint32(i + 1)).bit_length()) - 1
         if c < BITS:
             for dim in range(d):
                 X[dim] ^= V[dim, c]
-
-    # Owen-style scramble: XOR each dimension with a random 32-bit mask
     masks = rng.integers(0, 2**31, size=d, dtype=np.int64).astype(np.uint32)
     raw   = (pts * scale).astype(np.uint64)
     for dim in range(d):
@@ -170,26 +143,6 @@ st.markdown("""
     margin-bottom: 0.75rem;
   }
 
-  .param-table {
-    width: 100%; border-collapse: collapse;
-    font-family: 'DM Sans', sans-serif; font-size: 12px;
-    margin-bottom: 0.5rem;
-  }
-  .param-table th {
-    font-size: 9px; font-weight: 600; letter-spacing: 0.1em;
-    text-transform: uppercase; opacity: 0.4; color: var(--text-color);
-    border-bottom: 1px solid rgba(128,128,128,0.2);
-    padding: 6px 10px 6px 0; text-align: left;
-  }
-  .param-table td {
-    padding: 5px 10px 5px 0;
-    border-bottom: 1px solid rgba(128,128,128,0.07);
-    color: var(--text-color); font-size: 12px; vertical-align: top;
-  }
-  .param-name  { font-weight: 500; }
-  .param-def   { opacity: 0.6; font-size: 11px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
-  .param-value { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
-
   /* QMC risk panel */
   .risk-banner {
     background: rgba(128,128,128,0.04);
@@ -216,7 +169,6 @@ st.markdown("""
     font-size: 18px; font-weight: 500; color: var(--text-color); display: block;
   }
 
-  /* Scenario badge */
   .scenario-badge {
     display: inline-block;
     font-family: 'DM Sans', sans-serif;
@@ -239,7 +191,6 @@ st.markdown("""
     letter-spacing: 0.02em; opacity: 0.7;
   }
 
-  /* Appendix */
   .appendix-term {
     font-family: 'DM Sans', sans-serif;
     font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
@@ -262,32 +213,42 @@ st.markdown("""
     font-size: 13.5px; line-height: 1.8; color: var(--text-color);
     opacity: 0.7; font-style: italic; margin-top: 1.5rem;
   }
+
+  /* Editor hint */
+  .param-hint {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px; color: var(--text-color); opacity: 0.45;
+    margin-bottom: 0.6rem; font-style: italic;
+  }
 </style>
 """, unsafe_allow_html=True)
 
-# ── Chart constants ────────────────────────────────────────────────────────
-CHART_BG = "#F5F0E8"   # manila — warm, distinct from white, readable in dark mode
-FONT_CH  = dict(size=12, color="#1a1a1a", family="DM Sans, Arial, sans-serif")
-LEGEND   = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
-                font=dict(size=11, color="#1a1a1a"), bgcolor="rgba(0,0,0,0)")
-BASE     = dict(plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG, font=FONT_CH,
-                margin=dict(l=8, r=8, t=20, b=8), legend=LEGEND)
+# ── CHANGE 1: Dark chart theme ─────────────────────────────────────────────
+# All charts now use a dark background that matches the Streamlit dark UI.
+CHART_BG  = "#1c1c1e"          # near-black, consistent with Streamlit dark sidebar
+CHART_TEXT = "#d4d0c8"          # warm off-white for axis labels
+GRID_COLOR = "#2e2e32"          # subtle dark grid lines
+LINE_COLOR = "#3a3a3e"          # axis line color
+FONT_CH    = dict(size=12, color=CHART_TEXT, family="DM Sans, Arial, sans-serif")
+LEGEND     = dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0,
+                  font=dict(size=11, color=CHART_TEXT), bgcolor="rgba(0,0,0,0)")
+BASE       = dict(plot_bgcolor=CHART_BG, paper_bgcolor=CHART_BG, font=FONT_CH,
+                  margin=dict(l=8, r=8, t=20, b=8), legend=LEGEND)
 
-BLUE   = "#1a4f82"; LBLUE  = "#3d7ab5"; LLBLUE = "#b8cfe0"
-GREEN  = "#2e7d4f"; LGREEN = "#6ab06a"; LLGREEN= "#c2dfc2"
-RED    = "#b94040"; LRED   = "#c47a7a"
-AMBER  = "#c47a00"
+BLUE   = "#4a8fd4"; LBLUE  = "#3d7ab5"; LLBLUE = "#1e3a5f"
+GREEN  = "#4caf7a"; LGREEN = "#6ab06a"; LLGREEN= "#1a3d2a"
+RED    = "#d45a5a"; LRED   = "#c47a7a"
+AMBER  = "#d4a040"
 GRAY   = "#888888"
-CREAM  = "#F5F0E8"
 
-SCEN_COLORS = ["#1a4f82", "#2e7d4f", "#b94040"]
+SCEN_COLORS = ["#3d7ab5", "#4caf7a", "#d45a5a"]
 
 def ax(title, grid=True):
     return dict(
-        title=dict(text=title, font=dict(size=12, color="#333333")),
-        tickfont=dict(size=11, color="#444444"),
-        gridcolor="#e8e0d0" if grid else "rgba(0,0,0,0)",
-        linecolor="#d4c9b8", linewidth=1, showline=True,
+        title=dict(text=title, font=dict(size=12, color=CHART_TEXT)),
+        tickfont=dict(size=11, color=CHART_TEXT),
+        gridcolor=GRID_COLOR if grid else "rgba(0,0,0,0)",
+        linecolor=LINE_COLOR, linewidth=1, showline=True,
         showgrid=grid, zeroline=False, ticks="outside", ticklen=3,
     )
 
@@ -302,17 +263,14 @@ def irr_calc(cfs):
     except: return np.nan
 
 def kde_curve(data, n_pts=300, bw_factor=1.0):
-    """Pure-numpy Gaussian KDE. Returns (x_grid, density) scaled to histogram counts."""
     data  = np.asarray(data)
     n     = len(data)
     std   = np.std(data)
     if std == 0 or n < 2:
         return np.array([]), np.array([])
-    # Silverman bandwidth
     bw = bw_factor * 1.06 * std * n ** (-0.2)
     lo, hi = data.min() - 3 * bw, data.max() + 3 * bw
     x  = np.linspace(lo, hi, n_pts)
-    # Vectorised: (n_pts, n) kernel evaluations
     z  = (x[:, None] - data[None, :]) / bw
     density = np.exp(-0.5 * z**2).sum(axis=1) / (n * bw * np.sqrt(2 * np.pi))
     return x, density
@@ -380,84 +338,148 @@ with col_e3:
     </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# PARAMETERS
+# CHANGE 2: EDITABLE PARAMETER TABLE
+# Replaces all sliders and number_input widgets with a single st.data_editor.
+# The "Value" column is editable; Parameter and Definition columns are read-only.
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="sec-header">Model parameters</div>', unsafe_allow_html=True)
-st.markdown("""<div class="explainer-body" style="margin-bottom:1rem;">
-  Adjust the parameters below to model different transaction structures. All figures in USD millions.
-  The model recomputes all outputs, projections, and sensitivity tables in real time.
+st.markdown("""<div class="explainer-body" style="margin-bottom:0.5rem;">
+  Edit the <strong>Value</strong> column directly to adjust any parameter.
+  All outputs and charts update immediately on change.
 </div>""", unsafe_allow_html=True)
+st.markdown('<div class="param-hint">Click any cell in the Value column to edit. Press Enter or Tab to confirm.</div>', unsafe_allow_html=True)
 
-r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
-with r1c1: entry_ev_ebitda = st.number_input("Entry EV / EBITDA (x)",  value=12.0, step=0.5,  min_value=4.0,  max_value=30.0)
-with r1c2: ebitda_entry    = st.number_input("Entry EBITDA ($M)",       value=50.0, step=5.0,  min_value=1.0)
-with r1c3: revenue_entry   = st.number_input("Entry revenue ($M)",      value=200.0, step=10.0, min_value=1.0)
-with r1c4: debt_pct        = st.slider("Debt / EV (%)",                  30, 80, 60, step=5)
-with r1c5: interest_rate   = st.number_input("Interest rate (%)",        value=7.0,  step=0.25, min_value=1.0,  max_value=20.0)
+# Default parameter values
+_PARAM_DEFAULTS = {
+    "Entry EV / EBITDA (x)":          12.0,
+    "Entry EBITDA ($M)":               50.0,
+    "Entry revenue ($M)":             200.0,
+    "Debt / EV (%)":                   60.0,
+    "Interest rate (%)":                7.0,
+    "Revenue growth (%/yr)":            8.0,
+    "Margin expansion (bps/yr)":       50.0,
+    "CapEx (% of revenue)":             4.0,
+    "Amortization (% initial debt/yr)": 5.0,
+    "Exit EV / EBITDA (x)":           11.0,
+    "Holding period (years)":           5.0,
+    "Tax rate (%)":                    25.0,
+}
 
-r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(6)
-with r2c1: rev_growth       = st.slider("Revenue growth (%/yr)",          0, 30, 8,   step=1)
-with r2c2: margin_expansion = st.slider("Margin expansion (bps/yr)",    -100, 200, 50, step=10)
-with r2c3: capex_pct        = st.slider("CapEx (% of revenue)",           1, 15, 4,   step=1)
-with r2c4: amort_pct        = st.slider("Amortization (% initial debt)",  0, 20, 5,   step=1)
-with r2c5: exit_ev_ebitda   = st.number_input("Exit EV / EBITDA (x)",   value=11.0, step=0.5,  min_value=3.0,  max_value=30.0)
-with r2c6: hold_years       = st.slider("Holding period (years)",         3, 10, 5)
+_PARAM_DEFINITIONS = {
+    "Entry EV / EBITDA (x)":
+        "Purchase price as a multiple of trailing EBITDA. Typical LBO entries range 7x–14x depending on sector and auction dynamics.",
+    "Entry EBITDA ($M)":
+        "Earnings before interest, taxes, depreciation, and amortization at acquisition. Primary valuation anchor and debt-sizing metric.",
+    "Entry revenue ($M)":
+        "Total revenue at acquisition, used to compute the initial EBITDA margin and project forward revenue under the growth assumption.",
+    "Debt / EV (%)":
+        "Fraction of total enterprise value financed with debt at entry. Higher leverage amplifies returns when business return > cost of debt.",
+    "Interest rate (%)":
+        "Blended annual interest rate on all debt tranches. The hurdle below which the business must generate returns for leverage to be accretive.",
+    "Revenue growth (%/yr)":
+        "Projected annual revenue growth rate applied uniformly over the holding period. Drives EBITDA growth alongside margin expansion.",
+    "Margin expansion (bps/yr)":
+        "Annual improvement in EBITDA margin in basis points. Reflects operational improvements, pricing power, or cost reductions.",
+    "CapEx (% of revenue)":
+        "Capital expenditure as a percentage of revenue, deducted from EBITDA to compute free cash flow.",
+    "Amortization (% initial debt/yr)":
+        "Annual mandatory principal repayment as a percentage of initial debt balance. Reduces outstanding debt and interest expense over time.",
+    "Exit EV / EBITDA (x)":
+        "Multiple at which the business is sold. Compression (exit < entry) destroys value; expansion amplifies returns.",
+    "Holding period (years)":
+        "Years between acquisition and exit. Longer holds allow more time for operational improvement and debt paydown.",
+    "Tax rate (%)":
+        "Effective corporate income tax rate. Determines the tax shield value of interest deductions and after-tax cash flow for debt service.",
+}
 
+_PARAM_MINS = {
+    "Entry EV / EBITDA (x)": 4.0,
+    "Entry EBITDA ($M)": 1.0,
+    "Entry revenue ($M)": 1.0,
+    "Debt / EV (%)": 10.0,
+    "Interest rate (%)": 1.0,
+    "Revenue growth (%/yr)": 0.0,
+    "Margin expansion (bps/yr)": -200.0,
+    "CapEx (% of revenue)": 0.0,
+    "Amortization (% initial debt/yr)": 0.0,
+    "Exit EV / EBITDA (x)": 3.0,
+    "Holding period (years)": 2.0,
+    "Tax rate (%)": 0.0,
+}
+_PARAM_MAXS = {
+    "Entry EV / EBITDA (x)": 30.0,
+    "Entry EBITDA ($M)": 10000.0,
+    "Entry revenue ($M)": 50000.0,
+    "Debt / EV (%)": 85.0,
+    "Interest rate (%)": 25.0,
+    "Revenue growth (%/yr)": 50.0,
+    "Margin expansion (bps/yr)": 500.0,
+    "CapEx (% of revenue)": 50.0,
+    "Amortization (% initial debt/yr)": 30.0,
+    "Exit EV / EBITDA (x)": 30.0,
+    "Holding period (years)": 15.0,
+    "Tax rate (%)": 60.0,
+}
+
+param_df = pd.DataFrame({
+    "Parameter": list(_PARAM_DEFAULTS.keys()),
+    "Value": list(_PARAM_DEFAULTS.values()),
+    "Definition": [_PARAM_DEFINITIONS[k] for k in _PARAM_DEFAULTS.keys()],
+})
+
+edited_df = st.data_editor(
+    param_df,
+    use_container_width=True,
+    hide_index=True,
+    num_rows="fixed",
+    column_config={
+        "Parameter": st.column_config.TextColumn(
+            "Parameter",
+            disabled=True,
+            width="medium",
+        ),
+        "Value": st.column_config.NumberColumn(
+            "Value",
+            help="Click to edit. Press Enter to apply.",
+            format="%.2f",
+            width="small",
+        ),
+        "Definition": st.column_config.TextColumn(
+            "Definition",
+            disabled=True,
+            width="large",
+        ),
+    },
+    key="param_editor",
+)
+
+# Unpack edited values to named variables (same names as original code)
+def _pv(name):
+    """Get current value for a parameter by name."""
+    row = edited_df[edited_df["Parameter"] == name]
+    if len(row):
+        return float(row["Value"].iloc[0])
+    return _PARAM_DEFAULTS[name]
+
+entry_ev_ebitda = _pv("Entry EV / EBITDA (x)")
+ebitda_entry    = _pv("Entry EBITDA ($M)")
+revenue_entry   = _pv("Entry revenue ($M)")
+debt_pct        = _pv("Debt / EV (%)")
+interest_rate   = _pv("Interest rate (%)")
+rev_growth      = _pv("Revenue growth (%/yr)")
+margin_expansion= _pv("Margin expansion (bps/yr)")
+capex_pct       = _pv("CapEx (% of revenue)")
+amort_pct       = _pv("Amortization (% initial debt/yr)")
+exit_ev_ebitda  = _pv("Exit EV / EBITDA (x)")
+hold_years      = int(_pv("Holding period (years)"))
+tax_rate        = _pv("Tax rate (%)")
+
+# Fixed / derived
 nwc_pct  = 10
-tax_rate = 25
 da_pct   = 3
 
-# ── Parameter glossary ─────────────────────────────────────────────────────
-st.markdown('<div class="sec-header">Parameter definitions</div>', unsafe_allow_html=True)
-
-params_left = [
-    ("Entry EV / EBITDA", f"{entry_ev_ebitda:.1f}x",
-     "The purchase price expressed as a multiple of the target's trailing twelve-month EBITDA. Typical LBO entry multiples range from 7x to 14x depending on sector and market conditions."),
-    ("Entry EBITDA", fmt_m(ebitda_entry),
-     "Earnings before interest, taxes, depreciation, and amortization at the time of acquisition. Serves as the primary valuation anchor and debt sizing metric."),
-    ("Entry revenue", fmt_m(revenue_entry),
-     "Total revenue at acquisition, used to compute the initial EBITDA margin and project forward revenue under the growth assumption."),
-    ("Debt / EV", f"{debt_pct}%",
-     "The proportion of the total enterprise value financed with debt at entry. Higher leverage amplifies equity returns when the business return exceeds the cost of debt, but increases default risk."),
-    ("Interest rate", f"{interest_rate:.2f}%",
-     "The blended annual interest rate on all debt tranches. Represents the hurdle rate below which the underlying business must generate returns for leverage to be accretive."),
-    ("Amortization", f"{amort_pct}%/yr",
-     "Annual mandatory principal repayment as a percentage of the initial debt balance. Reduces outstanding debt and interest expense over the holding period."),
-]
-params_right = [
-    ("Revenue growth", f"{rev_growth}%/yr",
-     "Projected annual revenue growth rate, applied uniformly over the holding period. Drives EBITDA growth alongside margin expansion."),
-    ("Margin expansion", f"{margin_expansion} bps/yr",
-     "Annual improvement in EBITDA margin, in basis points. Reflects operational improvements, pricing power, or cost reduction initiatives."),
-    ("CapEx", f"{capex_pct}% of rev.",
-     "Capital expenditure as a percentage of revenue, deducted from EBITDA to compute free cash flow."),
-    ("Exit EV / EBITDA", f"{exit_ev_ebitda:.1f}x",
-     "The multiple at which the business is sold. Multiple compression (exit < entry) destroys value; expansion amplifies it."),
-    ("Holding period", f"{hold_years} yrs",
-     "The number of years between acquisition and exit. Longer holds allow more time for operational improvement and debt paydown."),
-    ("Tax rate", f"{tax_rate}%",
-     "Effective corporate income tax rate. Determines the tax shield value of interest deductions and the after-tax cash flow available for debt service."),
-]
-
-gl1, gl2 = st.columns(2)
-for col, params in [(gl1, params_left), (gl2, params_right)]:
-    with col:
-        rows = ""
-        for name, val, defn in params:
-            rows += f"""<tr>
-              <td class="param-name">{name}</td>
-              <td class="param-value">{val}</td>
-              <td class="param-def">{defn}</td>
-            </tr>"""
-        st.markdown(f"""<table class="param-table">
-          <thead><tr>
-            <th style="width:18%;">Parameter</th>
-            <th style="width:10%;">Value</th>
-            <th>Definition</th>
-          </tr></thead><tbody>{rows}</tbody></table>""", unsafe_allow_html=True)
-
 # ══════════════════════════════════════════════════════════════════════════
-# MODEL ENGINE
+# MODEL ENGINE (unchanged)
 # ══════════════════════════════════════════════════════════════════════════
 def run_model(entry_ev_ebitda, ebitda_entry, revenue_entry, debt_pct,
               interest_rate, rev_growth, margin_expansion, capex_pct,
@@ -520,7 +542,8 @@ def run_model(entry_ev_ebitda, ebitda_entry, revenue_entry, debt_pct,
 
 m = run_model(entry_ev_ebitda, ebitda_entry, revenue_entry, debt_pct,
               interest_rate, rev_growth, margin_expansion, capex_pct,
-              amort_pct, exit_ev_ebitda, hold_years)
+              amort_pct, exit_ev_ebitda, hold_years,
+              nwc_pct=nwc_pct, tax_rate=tax_rate, da_pct=da_pct)
 df             = m["df"]
 purchase_price = m["purchase_price"]
 debt_entry     = m["debt_entry"]
@@ -555,7 +578,7 @@ st.markdown(f"""
   <div class="abstract-label">Transaction summary</div>
   <div class="abstract-text">
     At {entry_ev_ebitda:.1f}x entry on {fmt_m(ebitda_entry)} of EBITDA, the purchase price is {fmt_m(purchase_price)},
-    financed with {fmt_m(debt_entry)} of debt ({debt_pct}% of EV) at {interest_rate:.2f}% and {fmt_m(equity_entry)} of sponsor equity.
+    financed with {fmt_m(debt_entry)} of debt ({debt_pct:.0f}% of EV) at {interest_rate:.2f}% and {fmt_m(equity_entry)} of sponsor equity.
     Over a {hold_years}-year hold, EBITDA is projected to grow at a {fmt_pct(ebitda_cagr)} CAGR
     to {fmt_m(exit_ebitda)}. At {exit_ev_ebitda:.1f}x exit, enterprise value reaches {fmt_m(exit_ev)};
     after repaying {fmt_m(exit_debt)} of remaining debt, the sponsor takes out {fmt_m(exit_equity)}.
@@ -574,7 +597,7 @@ st.markdown('<div class="sec-header">1. Transaction structure and returns summar
 k1, k2, k3, k4, k5 = st.columns(5)
 kpis = [
     ("Entry enterprise value",  fmt_m(purchase_price),  f"{entry_ev_ebitda:.1f}x EBITDA · {fmt_m(debt_entry)} debt + {fmt_m(equity_entry)} equity", "neut"),
-    ("Sponsor equity invested", fmt_m(equity_entry),    f"{100-debt_pct}% of EV · entry leverage {debt_entry/ebitda_entry:.1f}x EBITDA", "neut"),
+    ("Sponsor equity invested", fmt_m(equity_entry),    f"{100-debt_pct:.0f}% of EV · entry leverage {debt_entry/ebitda_entry:.1f}x EBITDA", "neut"),
     ("Exit equity proceeds",    fmt_m(exit_equity),     f"{fmt_m(exit_ev)} EV less {fmt_m(exit_debt)} remaining debt", "pos" if exit_equity > equity_entry else "neg"),
     ("Levered IRR",             irr_str,                f"MOIC: {moic:.2f}x over {hold_years} years",
       "pos" if not np.isnan(irr_levered) and irr_levered > 0.20 else "neut" if not np.isnan(irr_levered) and irr_levered > 0.12 else "neg"),
@@ -591,7 +614,7 @@ for col, (label, value, sub, cls) in zip([k1,k2,k3,k4,k5], kpis):
 st.markdown(f"""<div class="fig-caption" style="margin-top:0.75rem;">
   <b>Table 1.</b> Summary transaction metrics for the base case.
   Entry enterprise value of {fmt_m(purchase_price)} is financed with {fmt_m(debt_entry)} of debt
-  ({debt_pct}% leverage) at {interest_rate:.2f}% interest and {fmt_m(equity_entry)} of equity.
+  ({debt_pct:.0f}% leverage) at {interest_rate:.2f}% interest and {fmt_m(equity_entry)} of equity.
   The levered IRR of {irr_str} reflects the equity return inclusive of financial leverage;
   the unlevered IRR of {irr_u_str} reflects the underlying business return without leverage benefit.
   The {(irr_levered-irr_unlevered)*100:.1f} pp spread is the leverage effect, which is
@@ -611,8 +634,8 @@ with col_donut:
         labels=["Debt", "Sponsor equity"],
         values=[debt_entry, equity_entry],
         hole=0.56,
-        marker=dict(colors=[LRED, LBLUE], line=dict(color=CREAM, width=2.5)),
-        textfont=dict(size=12, color="#1a1a1a"),
+        marker=dict(colors=[LRED, LBLUE], line=dict(color=CHART_BG, width=2.5)),
+        textfont=dict(size=12, color=CHART_TEXT),
         textinfo="label+percent",
         hovertemplate="%{label}: $%{value:.1f}M<extra></extra>",
     ))
@@ -622,13 +645,13 @@ with col_donut:
         annotations=[dict(
             text=f"<b>{fmt_m(purchase_price)}</b><br><span style='font-size:10px'>EV</span>",
             x=0.5, y=0.5, showarrow=False,
-            font=dict(size=14, color="#1a1a1a", family="DM Sans, Arial"),
+            font=dict(size=14, color=CHART_TEXT, family="DM Sans, Arial"),
         )],
     )
     st.plotly_chart(fig_cap, use_container_width=True)
     st.markdown(f"""<div class="fig-caption">
-      <b>Figure 1.</b> Entry capital structure. Debt of {fmt_m(debt_entry)} ({debt_pct}% of EV)
-      and sponsor equity of {fmt_m(equity_entry)} ({100-debt_pct}% of EV).
+      <b>Figure 1.</b> Entry capital structure. Debt of {fmt_m(debt_entry)} ({debt_pct:.0f}% of EV)
+      and sponsor equity of {fmt_m(equity_entry)} ({100-debt_pct:.0f}% of EV).
       Entry net leverage is {debt_entry/ebitda_entry:.1f}x EBITDA.
     </div>""", unsafe_allow_html=True)
 
@@ -637,19 +660,19 @@ with col_wf:
         x=["Entry equity", "EBITDA growth", "Multiple change", "Debt paydown", "Exit equity"],
         y=[equity_entry, ev_from_growth, ev_from_multiple, total_paydown, exit_equity],
         measure=["absolute", "relative", "relative", "relative", "absolute"],
-        connector=dict(line=dict(color="#d4c9b8", width=1)),
+        connector=dict(line=dict(color=LINE_COLOR, width=1)),
         increasing=dict(marker=dict(color=LGREEN)),
         decreasing=dict(marker=dict(color=LRED)),
         totals=dict(marker=dict(color=LBLUE)),
         text=[fmt_m(v) for v in [equity_entry, ev_from_growth, ev_from_multiple, total_paydown, exit_equity]],
         textposition="outside",
-        textfont=dict(size=11, color="#333333"),
+        textfont=dict(size=11, color=CHART_TEXT),
     ))
     fig_wf.update_layout(
         **BASE, height=300,
         yaxis=dict(**ax("Equity value ($M)"), tickprefix="$"),
-        xaxis=dict(showgrid=False, tickfont=dict(size=11, color="#444444"),
-                   linecolor="#d4c9b8", linewidth=1, showline=True),
+        xaxis=dict(showgrid=False, tickfont=dict(size=11, color=CHART_TEXT),
+                   linecolor=LINE_COLOR, linewidth=1, showline=True),
         showlegend=False,
     )
     st.plotly_chart(fig_wf, use_container_width=True)
@@ -676,7 +699,7 @@ exit_cov     = exit_ebitda / (exit_debt * interest_rate / 100) if exit_debt > 0 
 fig_lev = make_subplots(specs=[[{"secondary_y": True}]])
 fig_lev.add_trace(go.Bar(
     x=years_range, y=df["Debt_Balance"].values,
-    name="Debt balance ($M)", marker_color=LRED, opacity=0.7,
+    name="Debt balance ($M)", marker_color=RED, opacity=0.6,
 ), secondary_y=False)
 fig_lev.add_trace(go.Scatter(
     x=years_range, y=lev_turns,
@@ -693,10 +716,10 @@ fig_lev.update_layout(
     xaxis=dict(**ax("Year"), dtick=1),
     yaxis=dict(**ax("Debt balance ($M)"), tickprefix="$"),
     yaxis2=dict(
-        title=dict(text="Multiple (x)", font=dict(size=12, color="#333333")),
-        tickfont=dict(size=11, color="#444444"),
+        title=dict(text="Multiple (x)", font=dict(size=12, color=CHART_TEXT)),
+        tickfont=dict(size=11, color=CHART_TEXT),
         showgrid=False, zeroline=False, overlaying="y", side="right",
-        linecolor="#d4c9b8", linewidth=1, showline=True,
+        linecolor=LINE_COLOR, linewidth=1, showline=True,
     ),
 )
 st.plotly_chart(fig_lev, use_container_width=True)
@@ -730,9 +753,9 @@ for _, row in df.iterrows():
 st.dataframe(pd.DataFrame(pl_data), use_container_width=True, hide_index=True)
 st.markdown(f"""<div class="fig-caption">
   <b>Table 2.</b> Projected income statement over the {hold_years}-year holding period.
-  Revenue grows at {fmt_pct(rev_growth/100)}/year; EBITDA margin expands {margin_expansion} bps/year
+  Revenue grows at {fmt_pct(rev_growth/100)}/year; EBITDA margin expands {margin_expansion:.0f} bps/year
   from an entry margin of {entry_margin*100:.1f}%. D&A is set at {da_pct}% of revenue.
-  Interest expense declines each year as debt amortizes at {amort_pct}% of the initial balance annually.
+  Interest expense declines each year as debt amortizes at {amort_pct:.0f}% of the initial balance annually.
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -757,10 +780,10 @@ with ch1:
         xaxis=dict(**ax("Year"), dtick=1),
         yaxis=dict(**ax("Value ($M)"), tickprefix="$"),
         yaxis2=dict(
-            title=dict(text="EBITDA margin (%)", font=dict(size=12, color="#333333")),
-            tickfont=dict(size=11, color="#444444"), ticksuffix="%",
+            title=dict(text="EBITDA margin (%)", font=dict(size=12, color=CHART_TEXT)),
+            tickfont=dict(size=11, color=CHART_TEXT), ticksuffix="%",
             showgrid=False, zeroline=False, overlaying="y", side="right",
-            linecolor="#d4c9b8", linewidth=1, showline=True,
+            linecolor=LINE_COLOR, linewidth=1, showline=True,
         ),
     )
     st.plotly_chart(fig_rev, use_container_width=True)
@@ -775,11 +798,11 @@ with ch2:
         x=years_range, y=df["FCF"].values,
         marker_color=[GREEN if v >= 0 else RED for v in df["FCF"].values], opacity=0.8,
         text=[fmt_m(v) for v in df["FCF"].values],
-        textposition="outside", textfont=dict(size=11, color="#333333"),
+        textposition="outside", textfont=dict(size=11, color=CHART_TEXT),
     ))
     fig_fcf.update_layout(
         **BASE, height=320, showlegend=False,
-        yaxis={**ax("Levered FCF ($M)"), "zeroline": True, "zerolinecolor": "#d4c9b8"},
+        yaxis={**ax("Levered FCF ($M)"), "zeroline": True, "zerolinecolor": LINE_COLOR},
         xaxis=dict(**ax("Year"), dtick=1),
     )
     st.plotly_chart(fig_fcf, use_container_width=True)
@@ -816,15 +839,15 @@ br1, br2 = st.columns(2)
 with br1:
     valid = [(v, l, c) for v, l, c in [
         (ev_from_growth,   "EBITDA growth",  LGREEN),
-        (ev_from_multiple, "Multiple change",LBLUE if ev_from_multiple >= 0 else LRED),
-        (total_paydown,    "Debt paydown",   LLBLUE),
+        (ev_from_multiple, "Multiple change", LBLUE if ev_from_multiple >= 0 else LRED),
+        (total_paydown,    "Debt paydown",    LLBLUE),
     ] if v > 0]
     if valid:
         va, vl, vc = zip(*valid)
         fig_pie = go.Figure(go.Pie(
             labels=vl, values=va, hole=0.52,
-            marker=dict(colors=list(vc), line=dict(color=CREAM, width=2)),
-            textfont=dict(size=12, color="#1a1a1a"),
+            marker=dict(colors=list(vc), line=dict(color=CHART_BG, width=2)),
+            textfont=dict(size=12, color=CHART_TEXT),
             textinfo="label+percent",
             hovertemplate="%{label}: $%{value:.1f}M<extra></extra>",
         ))
@@ -834,7 +857,7 @@ with br1:
             annotations=[dict(
                 text=f"<b>{moic:.2f}x</b><br>MOIC",
                 x=0.5, y=0.5, showarrow=False,
-                font=dict(size=14, color="#1a1a1a", family="DM Sans, Arial"),
+                font=dict(size=14, color=CHART_TEXT, family="DM Sans, Arial"),
             )],
         )
         st.plotly_chart(fig_pie, use_container_width=True)
@@ -864,13 +887,13 @@ with br2:
                        annotation_text=f"Unlevered IRR ({irr_u_str})",
                        annotation_font=dict(size=10, color=GRAY),
                        annotation_position="top left")
-    fig_lev2.add_hline(y=interest_rate, line_dash="dot", line_color=LRED, line_width=1.5,
+    fig_lev2.add_hline(y=interest_rate, line_dash="dot", line_color=RED, line_width=1.5,
                        annotation_text=f"Cost of debt ({interest_rate:.1f}%)",
-                       annotation_font=dict(size=10, color=LRED),
+                       annotation_font=dict(size=10, color=RED),
                        annotation_position="bottom right")
-    fig_lev2.add_vline(x=debt_pct, line_dash="dot", line_color="#aaaaaa",
-                       annotation_text=f"Base ({debt_pct}%)",
-                       annotation_font=dict(size=10, color="#666666"),
+    fig_lev2.add_vline(x=debt_pct, line_dash="dot", line_color=GRAY,
+                       annotation_text=f"Base ({debt_pct:.0f}%)",
+                       annotation_font=dict(size=10, color=GRAY),
                        annotation_position="top right")
     fig_lev2.update_layout(
         **BASE, height=300,
@@ -914,25 +937,25 @@ for dp in debt_pct_range:
     rows_irr.append(r_i); rows_moic.append(r_m)
 
 sens_irr_df  = pd.DataFrame(rows_irr,
-    index=[f"{d}% debt" for d in debt_pct_range],
+    index=[f"{d:.0f}% debt" for d in debt_pct_range],
     columns=[f"{m:.1f}x" for m in exit_mult_range])
 sens_moic_df = pd.DataFrame(rows_moic,
-    index=[f"{d}% debt" for d in debt_pct_range],
+    index=[f"{d:.0f}% debt" for d in debt_pct_range],
     columns=[f"{m:.1f}x" for m in exit_mult_range])
 
 def style_irr(v):
     try:
         n = float(v.replace("%",""))
-        if n >= 20: return "background-color:rgba(46,125,79,0.18);color:#1a4f82;font-weight:600;"
-        if n < 12:  return "background-color:rgba(185,64,64,0.15);color:#7a1a1a;font-weight:600;"
+        if n >= 20: return "background-color:rgba(46,125,79,0.25);color:#6ab06a;font-weight:600;"
+        if n < 12:  return "background-color:rgba(185,64,64,0.25);color:#d45a5a;font-weight:600;"
     except: pass
     return ""
 
 def style_moic(v):
     try:
         n = float(v.replace("x",""))
-        if n >= 3.0: return "background-color:rgba(46,125,79,0.18);color:#1a4f82;font-weight:600;"
-        if n < 2.0:  return "background-color:rgba(185,64,64,0.15);color:#7a1a1a;font-weight:600;"
+        if n >= 3.0: return "background-color:rgba(46,125,79,0.25);color:#6ab06a;font-weight:600;"
+        if n < 2.0:  return "background-color:rgba(185,64,64,0.25);color:#d45a5a;font-weight:600;"
     except: pass
     return ""
 
@@ -954,8 +977,8 @@ st.markdown(f"""<div class="fig-caption">
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="sec-header">8. IRR sensitivity: revenue growth vs. margin expansion</div>', unsafe_allow_html=True)
 
-growth_range = list(range(max(0, rev_growth - 8), rev_growth + 10, 2))
-margin_range = list(range(max(-100, margin_expansion - 100), margin_expansion + 150, 50))
+growth_range = list(range(max(0, int(rev_growth) - 8), int(rev_growth) + 10, 2))
+margin_range = list(range(max(-100, int(margin_expansion) - 100), int(margin_expansion) + 150, 50))
 
 heat_z = []
 for mg in margin_range:
@@ -974,44 +997,44 @@ fig_heat = go.Figure(go.Heatmap(
     z=heat_z,
     x=[f"{g}%" for g in growth_range],
     y=[f"{m} bps" for m in margin_range],
-    colorscale=[[0, "#c47a7a"], [0.45, "#f7f7f7"], [1, "#6ab06a"]],
+    colorscale=[[0, "#7a1a1a"], [0.45, "#2a2a2e"], [1, "#1a5c30"]],
     zmid=irr_levered * 100 if not np.isnan(irr_levered) else 15,
     text=[[f"{v:.1f}%" if v is not None else "n/a" for v in row] for row in heat_z],
-    texttemplate="%{text}", textfont=dict(size=10, color="#1a1a1a"),
+    texttemplate="%{text}", textfont=dict(size=10, color=CHART_TEXT),
     hovertemplate="Growth: %{x}<br>Margin exp.: %{y}<br>IRR: %{text}<extra></extra>",
     showscale=True,
     colorbar=dict(
-        title=dict(text="IRR (%)", font=dict(size=11, color="#333333")),
-        tickfont=dict(size=10, color="#444444"), thickness=12, len=0.8,
+        title=dict(text="IRR (%)", font=dict(size=11, color=CHART_TEXT)),
+        tickfont=dict(size=10, color=CHART_TEXT), thickness=12, len=0.8,
     ),
 ))
-if rev_growth in growth_range and margin_expansion in margin_range:
-    bx = growth_range.index(rev_growth)
-    by = margin_range.index(margin_expansion)
+if int(rev_growth) in growth_range and int(margin_expansion) in margin_range:
+    bx = growth_range.index(int(rev_growth))
+    by = margin_range.index(int(margin_expansion))
     fig_heat.add_shape(type="rect",
         x0=bx-0.5, x1=bx+0.5, y0=by-0.5, y1=by+0.5,
-        line=dict(color="#1a1a1a", width=2))
+        line=dict(color=CHART_TEXT, width=2))
 fig_heat.update_layout(
     **{**BASE, "margin": dict(l=8, r=60, t=20, b=8)},
     height=380,
-    xaxis=dict(title=dict(text="Annual revenue growth rate", font=dict(size=12, color="#333333")),
-               tickfont=dict(size=11, color="#444444"), showgrid=False,
-               linecolor="#d4c9b8", linewidth=1, showline=False),
-    yaxis=dict(title=dict(text="Annual EBITDA margin expansion (bps)", font=dict(size=12, color="#333333")),
-               tickfont=dict(size=11, color="#444444"), showgrid=False,
-               linecolor="#d4c9b8", linewidth=1, showline=False),
+    xaxis=dict(title=dict(text="Annual revenue growth rate", font=dict(size=12, color=CHART_TEXT)),
+               tickfont=dict(size=11, color=CHART_TEXT), showgrid=False,
+               linecolor=LINE_COLOR, linewidth=1, showline=False),
+    yaxis=dict(title=dict(text="Annual EBITDA margin expansion (bps)", font=dict(size=12, color=CHART_TEXT)),
+               tickfont=dict(size=11, color=CHART_TEXT), showgrid=False,
+               linecolor=LINE_COLOR, linewidth=1, showline=False),
 )
 st.plotly_chart(fig_heat, use_container_width=True)
 st.markdown(f"""<div class="fig-caption">
   <b>Figure 8.</b> Levered IRR heatmap across revenue growth rates (columns) and annual EBITDA margin
   expansion (rows), with exit multiple and leverage held at base case values.
-  The base case ({rev_growth}% growth, {margin_expansion} bps/year) is outlined in black.
+  The base case ({rev_growth:.0f}% growth, {margin_expansion:.0f} bps/year) is outlined.
   Revenue growth is typically the more powerful lever, reflecting the multiplicative effect of
   EBITDA margin on a larger revenue base.
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# SECTION 9 — QUASI-MONTE CARLO RISK SIMULATION (Sobol sequences)
+# SECTION 9 — QUASI-MONTE CARLO RISK SIMULATION
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="sec-header">9. Quasi-Monte Carlo risk simulation</div>', unsafe_allow_html=True)
 
@@ -1038,7 +1061,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# QMC uncertainty controls
 qmc_c1, qmc_c2, qmc_c3 = st.columns(3)
 with qmc_c1:
     qmc_n = st.select_slider("QMC sample size (Sobol)", options=[128, 256, 512, 1024], value=512)
@@ -1050,24 +1072,13 @@ with qmc_c2:
 with qmc_c3:
     lev_vol   = st.slider("Leverage uncertainty (±pp of EV)", 2, 20, 10)
     corr_coef = st.slider("Growth–Multiple correlation", -0.8, 0.8, 0.3, step=0.1,
-                          help="Positive: high-growth deals command higher exit multiples. "
-                               "Negative: multiple contraction in frothy growth environments.")
+                          help="Positive: high-growth deals command higher exit multiples.")
 
 @st.cache_data(show_spinner=False)
 def run_qmc(n, rev_growth, margin_expansion, exit_ev_ebitda, interest_rate, debt_pct,
             rev_vol, margin_vol, mult_vol, rate_vol, lev_vol, corr_coef,
             entry_ev_ebitda, ebitda_entry, revenue_entry, amort_pct,
             hold_years, capex_pct, nwc_pct, tax_rate, da_pct):
-    """
-    5-dimensional Sobol QMC (pure numpy, no scipy dependency):
-      dim 0 -> revenue growth
-      dim 1 -> margin expansion (bps)
-      dim 2 -> exit multiple (partially correlated with dim 0)
-      dim 3 -> interest rate
-      dim 4 -> entry leverage (% of EV)
-    Correlation between growth and exit multiple is induced via
-    Cholesky decomposition on normal quantiles of the Sobol draws.
-    """
     m_power = int(np.ceil(np.log2(max(n, 2))))
     u = _sobol_sequence(2 ** m_power, d=5, seed=42)[:n]
 
@@ -1109,15 +1120,11 @@ def run_qmc(n, rev_growth, margin_expansion, exit_ev_ebitda, interest_rate, debt
     z_corr = (L @ z.T).T
     u_corr = ndtr(z_corr)
 
-    gr_samples = np.clip(
-        rev_growth + (u_corr[:, 0] - 0.5) * 2 * rev_vol, 0, 40)
+    gr_samples = np.clip(rev_growth + (u_corr[:, 0] - 0.5) * 2 * rev_vol, 0, 40)
     mg_samples = margin_expansion + (u_corr[:, 1] - 0.5) * 2 * margin_vol
-    em_samples = np.clip(
-        exit_ev_ebitda + (u_corr[:, 2] - 0.5) * 2 * mult_vol, 3.0, 25.0)
-    ir_samples = np.clip(
-        interest_rate + (u_corr[:, 3] - 0.5) * 2 * rate_vol, 1.0, 20.0)
-    dp_samples = np.clip(
-        debt_pct + (u_corr[:, 4] - 0.5) * 2 * lev_vol, 10, 85)
+    em_samples = np.clip(exit_ev_ebitda + (u_corr[:, 2] - 0.5) * 2 * mult_vol, 3.0, 25.0)
+    ir_samples = np.clip(interest_rate + (u_corr[:, 3] - 0.5) * 2 * rate_vol, 1.0, 20.0)
+    dp_samples = np.clip(debt_pct + (u_corr[:, 4] - 0.5) * 2 * lev_vol, 10, 85)
 
     purchase_price = entry_ev_ebitda * ebitda_entry
     irrs, moics = [], []
@@ -1127,8 +1134,6 @@ def run_qmc(n, rev_growth, margin_expansion, exit_ev_ebitda, interest_rate, debt
         eq_e   = purchase_price - debt_e
         entry_m= ebitda_entry / revenue_entry
         debt_b = debt_e
-
-        fcfs   = []
         for yr in range(1, hold_years + 1):
             rev   = revenue_entry * ((1 + gr/100) ** yr)
             margin= min(entry_m + (mg/10000) * yr, 0.60)
@@ -1137,14 +1142,12 @@ def run_qmc(n, rev_growth, margin_expansion, exit_ev_ebitda, interest_rate, debt
             ebit  = ebitda_y - da_y
             i_exp = debt_b * (ir / 100)
             ebt   = ebit - i_exp
-            tax   = max(ebt, 0) * (tax_rate / 100)
+            tax_  = max(ebt, 0) * (tax_rate / 100)
             capex_y= rev * (capex_pct / 100)
             prev_r = revenue_entry * ((1 + gr/100) ** (yr-1))
             d_nwc  = (rev - prev_r) * (nwc_pct / 100)
-            fcf    = ebitda_y - capex_y - d_nwc - tax - i_exp
-            amort  = min(debt_e * (amort_pct / 100), debt_b)
-            debt_b = max(debt_b - amort, 0)
-            fcfs.append(fcf)
+            amort_  = min(debt_e * (amort_pct / 100), debt_b)
+            debt_b = max(debt_b - amort_, 0)
 
         exit_ebitda_s = revenue_entry * ((1 + gr/100)**hold_years) * min(
             entry_m + (mg/10000)*hold_years, 0.60)
@@ -1178,7 +1181,6 @@ sharpe_irr       = (median_irr - interest_rate) / irr_std if irr_std > 0 else np
 median_moic      = np.median(valid_moics)
 moic_p10         = np.percentile(valid_moics, 10)
 
-# Risk summary banner
 sharpe_cls = "pos" if sharpe_irr >= 1.5 else "warn" if sharpe_irr >= 0.8 else "neg"
 st.markdown(f"""
 <div class="risk-banner">
@@ -1214,37 +1216,27 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# ── QMC Charts ─────────────────────────────────────────────────────────────
 qc1, qc2 = st.columns(2)
 
 with qc1:
-    # IRR distribution: histogram + KDE overlay
     fig_irr_dist = go.Figure()
-
-    # Histogram (counts)
     fig_irr_dist.add_trace(go.Histogram(
         x=valid_irrs, nbinsx=35,
         marker_color=LBLUE, opacity=0.55,
         name="Simulated IRR",
         hovertemplate="IRR: %{x:.1f}%<br>Count: %{y}<extra></extra>",
     ))
-
-    # KDE line — scale density to match histogram count axis
     kde_x, kde_dens = kde_curve(valid_irrs, bw_factor=0.9)
     if len(kde_x):
         bin_w   = (valid_irrs.max() - valid_irrs.min()) / 35
         kde_cnt = kde_dens * len(valid_irrs) * bin_w
         fig_irr_dist.add_trace(go.Scatter(
-            x=kde_x, y=kde_cnt,
-            mode="lines", name="KDE",
-            line=dict(color="#2a2a2a", width=2.5),
-            hoverinfo="skip",
+            x=kde_x, y=kde_cnt, mode="lines", name="KDE",
+            line=dict(color=CHART_TEXT, width=2.5), hoverinfo="skip",
         ))
-
-    # Tail shading
     fig_irr_dist.add_vrect(
         x0=valid_irrs.min(), x1=var_5pct,
-        fillcolor=LRED, opacity=0.13, line_width=0,
+        fillcolor=RED, opacity=0.15, line_width=0,
         annotation_text="5th pctile", annotation_position="top left",
         annotation_font=dict(size=9, color=RED),
     )
@@ -1268,36 +1260,29 @@ with qc1:
     st.plotly_chart(fig_irr_dist, use_container_width=True)
     st.markdown(f"""<div class="fig-caption">
       <b>Figure 9.</b> Distribution of levered IRR across {qmc_n} Sobol QMC paths, with Gaussian
-      KDE overlay (Silverman bandwidth). The red-shaded region marks the 5th percentile tail
-      (VaR equivalent at {var_5pct:.1f}%). Base case IRR ({irr_str}) shown as dashed line.
+      KDE overlay. The red-shaded region marks the 5th percentile tail (VaR at {var_5pct:.1f}%).
       {pct_above_hurdle:.0f}% of simulated paths clear the 20% institutional hurdle.
     </div>""", unsafe_allow_html=True)
 
 with qc2:
-    # MOIC distribution: histogram + KDE overlay
     fig_moic_dist = go.Figure()
-
     fig_moic_dist.add_trace(go.Histogram(
         x=valid_moics, nbinsx=35,
         marker_color=LGREEN, opacity=0.55,
         name="Simulated MOIC",
         hovertemplate="MOIC: %{x:.2f}x<br>Count: %{y}<extra></extra>",
     ))
-
     kde_mx, kde_md = kde_curve(valid_moics, bw_factor=0.9)
     if len(kde_mx):
         bin_wm   = (valid_moics.max() - valid_moics.min()) / 35
         kde_mcnt = kde_md * len(valid_moics) * bin_wm
         fig_moic_dist.add_trace(go.Scatter(
-            x=kde_mx, y=kde_mcnt,
-            mode="lines", name="KDE",
-            line=dict(color="#2a2a2a", width=2.5),
-            hoverinfo="skip",
+            x=kde_mx, y=kde_mcnt, mode="lines", name="KDE",
+            line=dict(color=CHART_TEXT, width=2.5), hoverinfo="skip",
         ))
-
     fig_moic_dist.add_vrect(
         x0=valid_moics.min(), x1=moic_p10,
-        fillcolor=LRED, opacity=0.13, line_width=0,
+        fillcolor=RED, opacity=0.15, line_width=0,
         annotation_text="P10 downside", annotation_position="top left",
         annotation_font=dict(size=9, color=RED),
     )
@@ -1321,7 +1306,6 @@ with qc2:
       {np.mean(valid_moics >= 3.0)*100:.0f}% of paths achieve the 3.0x excellent threshold.
     </div>""", unsafe_allow_html=True)
 
-# ── QMC Scatter: growth vs multiple colored by IRR, with marginal rug ticks ──
 fig_scatter = make_subplots(
     rows=2, cols=2,
     column_widths=[0.82, 0.18],
@@ -1329,74 +1313,54 @@ fig_scatter = make_subplots(
     shared_xaxes=True, shared_yaxes=True,
     horizontal_spacing=0.01, vertical_spacing=0.01,
 )
-
-# Main scatter (row 2, col 1)
 fig_scatter.add_trace(go.Scatter(
-    x=qmc_gr, y=qmc_em,
-    mode="markers",
+    x=qmc_gr, y=qmc_em, mode="markers",
     marker=dict(
         color=qmc_irrs,
-        colorscale=[[0, "#c47a7a"], [0.45, "#f0ece3"], [1, "#6ab06a"]],
+        colorscale=[[0, "#7a1a1a"], [0.45, "#2e2e38"], [1, "#1a5c30"]],
         size=8, opacity=0.85,
         colorbar=dict(
-            title=dict(text="IRR (%)", font=dict(size=11, color="#333333")),
-            tickfont=dict(size=10, color="#444444"), thickness=10,
+            title=dict(text="IRR (%)", font=dict(size=11, color=CHART_TEXT)),
+            tickfont=dict(size=10, color=CHART_TEXT), thickness=10,
             x=0.81, len=0.82, y=0.09, yanchor="bottom",
         ),
         cmin=np.percentile(valid_irrs, 2),
         cmax=np.percentile(valid_irrs, 98),
-        line=dict(width=0.5, color="rgba(255,255,255,0.4)"),
+        line=dict(width=0.5, color="rgba(255,255,255,0.2)"),
     ),
     hovertemplate="Growth: %{x:.1f}%<br>Exit multiple: %{y:.1f}x<br>IRR: %{marker.color:.1f}%<extra></extra>",
 ), row=2, col=1)
-
-# Base case star
 fig_scatter.add_trace(go.Scatter(
     x=[rev_growth], y=[exit_ev_ebitda], mode="markers",
-    marker=dict(symbol="star", size=16, color=BLUE,
-                line=dict(color="white", width=1.5)),
+    marker=dict(symbol="star", size=16, color=BLUE, line=dict(color=CHART_TEXT, width=1.5)),
     name="Base case", hovertemplate="Base case<extra></extra>",
 ), row=2, col=1)
-
-# Top rug — growth distribution
 fig_scatter.add_trace(go.Box(
-    x=qmc_gr, name="", marker_color=LBLUE,
-    line_color=LBLUE, fillcolor=LLBLUE,
-    boxpoints=False, notched=False,
-    hoverinfo="skip", showlegend=False,
+    x=qmc_gr, name="", marker_color=LBLUE, line_color=LBLUE, fillcolor=LLBLUE,
+    boxpoints=False, notched=False, hoverinfo="skip", showlegend=False,
 ), row=1, col=1)
-
-# Right rug — exit multiple distribution
 fig_scatter.add_trace(go.Box(
-    y=qmc_em, name="", marker_color=LGREEN,
-    line_color=LGREEN, fillcolor=LLGREEN,
-    boxpoints=False, notched=False,
-    hoverinfo="skip", showlegend=False,
-    orientation="v",
+    y=qmc_em, name="", marker_color=LGREEN, line_color=LGREEN, fillcolor=LLGREEN,
+    boxpoints=False, notched=False, hoverinfo="skip", showlegend=False, orientation="v",
 ), row=2, col=2)
-
 fig_scatter.update_layout(
     **BASE, height=420, showlegend=False,
-    xaxis2=dict(**ax("Revenue growth (%)", grid=True), ticksuffix="%",
-                domain=[0, 0.81]),
+    xaxis2=dict(**ax("Revenue growth (%)", grid=True), ticksuffix="%", domain=[0, 0.81]),
     yaxis3=dict(**ax("Exit multiple (x)", grid=True), ticksuffix="x"),
-    xaxis=dict(title=dict(text="Growth distribution", font=dict(size=10, color="#888")),
+    xaxis=dict(title=dict(text="Growth distribution", font=dict(size=10, color=GRAY)),
                showticklabels=False, showgrid=False, zeroline=False,
-               linecolor="#d4c9b8", linewidth=1),
-    yaxis=dict(showticklabels=False, showgrid=False, zeroline=False,
-               linecolor="#d4c9b8", linewidth=1),
-    yaxis4=dict(title=dict(text="Multiple dist.", font=dict(size=10, color="#888")),
-                showticklabels=False, showgrid=False, zeroline=False,
-                linecolor="#d4c9b8", linewidth=1),
-    xaxis4=dict(showticklabels=False, showgrid=False, zeroline=False,
-                linecolor="#d4c9b8", linewidth=1),
+               linecolor=LINE_COLOR, linewidth=1),
+    yaxis=dict(showticklabels=False, showgrid=False, zeroline=False, linecolor=LINE_COLOR, linewidth=1),
+    yaxis4=dict(title=dict(text="Multiple dist.", font=dict(size=10, color=GRAY)),
+                showticklabels=False, showgrid=False, zeroline=False, linecolor=LINE_COLOR, linewidth=1),
+    xaxis4=dict(showticklabels=False, showgrid=False, zeroline=False, linecolor=LINE_COLOR, linewidth=1),
 )
 st.plotly_chart(fig_scatter, use_container_width=True)
 st.markdown(f"""<div class="fig-caption">
   <b>Figure 11.</b> Joint distribution of {qmc_n} Sobol paths across simulated revenue growth and exit
-  multiple, colored by realized levered IRR. Marginal box plots show the univariate spread of each
-  parameter. The Cholesky-induced correlation (ρ = {corr_coef:.1f}) between growth and exit multiple
-  is visible in the diagonal tilt of the point cloud. The base case is marked with a star.
+  multiple, colored by realized levered IRR. Marginal box plots show the univariate spread.
+  The Cholesky-induced correlation (ρ = {corr_coef:.1f}) between growth and exit multiple
+  is visible in the diagonal tilt of the point cloud. Base case marked with a star.
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1415,7 +1379,6 @@ scenarios = [("Base case", entry_ev_ebitda, ebitda_entry, revenue_entry, debt_pc
                interest_rate, rev_growth, margin_expansion, capex_pct, amort_pct,
                exit_ev_ebitda, hold_years)]
 
-# Scenario defaults: B = downside, C = upside
 _sc_defaults = {
     2: dict(entry=min(entry_ev_ebitda + 2.0, 20.0), debt=min(debt_pct + 10, 80),
             grow=max(rev_growth - 4, 0), marg=max(margin_expansion - 50, -100),
@@ -1456,13 +1419,13 @@ sc_results = []
 for sc in all_scenarios:
     label = sc[0]
     args  = sc[1:]
-    r = run_model(*args)
+    r = run_model(*args, nwc_pct=nwc_pct, tax_rate=tax_rate, da_pct=da_pct)
     sc_results.append({
         "Scenario": label,
         "Entry EV/EBITDA": f"{args[0]:.1f}x",
-        "Debt/EV": f"{args[3]}%",
-        "Rev Growth": f"{args[5]}%",
-        "Margin Exp.": f"{args[6]} bps",
+        "Debt/EV": f"{args[3]:.0f}%",
+        "Rev Growth": f"{args[5]:.0f}%",
+        "Margin Exp.": f"{args[6]:.0f} bps",
         "Exit EV/EBITDA": f"{args[9]:.1f}x",
         "Entry Equity": fmt_m(r["equity_entry"]),
         "Exit Equity": fmt_m(r["exit_equity"]),
@@ -1475,7 +1438,6 @@ for sc in all_scenarios:
 sc_df = pd.DataFrame(sc_results).set_index("Scenario")
 st.dataframe(sc_df, use_container_width=True)
 
-# Side-by-side IRR + MOIC bar comparison
 sc_names_short = ["Base", "Downside", "Upside"]
 sc_irrs   = [float(r["Levered IRR"].replace("%","")) if r["Levered IRR"] != "n/a" else 0 for r in sc_results]
 sc_moics  = [float(r["MOIC"].replace("x","")) for r in sc_results]
@@ -1486,10 +1448,10 @@ for i, (nm, irr_v, moic_v) in enumerate(zip(sc_names_short, sc_irrs, sc_moics)):
     c = SCEN_COLORS[i]
     fig_sc.add_trace(go.Bar(x=[nm], y=[irr_v], marker_color=c, opacity=0.8,
                              text=[f"{irr_v:.1f}%"], textposition="outside",
-                             textfont=dict(size=12, color="#333"), showlegend=False), row=1, col=1)
+                             textfont=dict(size=12, color=CHART_TEXT), showlegend=False), row=1, col=1)
     fig_sc.add_trace(go.Bar(x=[nm], y=[moic_v], marker_color=c, opacity=0.8,
                              text=[f"{moic_v:.2f}x"], textposition="outside",
-                             textfont=dict(size=12, color="#333"), showlegend=False), row=1, col=2)
+                             textfont=dict(size=12, color=CHART_TEXT), showlegend=False), row=1, col=2)
 
 fig_sc.add_hline(y=20, line_dash="dot", line_color=GRAY, line_width=1,
                   annotation_text="20% hurdle", annotation_font=dict(size=9, color=GRAY), row=1, col=1)
@@ -1508,7 +1470,7 @@ st.markdown("""<div class="fig-caption">
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# APPENDIX — PLAIN-LANGUAGE GUIDE FOR NON-TECHNICAL READERS
+# APPENDIX
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="sec-header">Appendix: terminology, metrics, and methodology</div>', unsafe_allow_html=True)
 
@@ -1539,78 +1501,31 @@ times the company's EBITDA at acquisition.</div>
 <div class="appendix-term">EBITDA</div>
 <div class="appendix-def">Earnings Before Interest, Taxes, Depreciation, and Amortization.
 It is the most common measure of a business's underlying operating profit, stripping out
-financing costs and accounting adjustments to give a cleaner view of cash generation.
-In private equity, EBITDA is the primary yardstick for valuing a business and sizing debt.</div>
+financing costs and accounting adjustments to give a cleaner view of cash generation.</div>
 
 <div class="appendix-term">EV/EBITDA multiple</div>
-<div class="appendix-def">The ratio of enterprise value to EBITDA. If a business earns $50M
-in EBITDA and is purchased at 12x, the enterprise value is $600M. Higher multiples reflect
-faster-growing businesses or competitive auction processes. The same multiple framework is
-used at entry and exit; if the exit multiple is lower than the entry multiple, that is called
-multiple compression, which hurts returns.</div>
+<div class="appendix-def">The ratio of enterprise value to EBITDA. Higher multiples reflect
+faster-growing businesses or competitive auction processes. If the exit multiple is lower than
+the entry multiple, that is multiple compression, which hurts returns.</div>
 
 <div class="appendix-term">Leveraged Buyout (LBO)</div>
 <div class="appendix-def">An acquisition where a large portion of the purchase price is
-financed with borrowed money rather than the buyer's own cash. The borrowed money is secured
-against the company's assets and repaid from the company's future cash flows. The buyer
-contributes a smaller equity check, which means any gains in the company's value are
-amplified on that smaller investment.</div>
-
-<div class="appendix-term">Sponsor equity</div>
-<div class="appendix-def">The cash the private equity firm actually writes a check for.
-In the base case, with 60% of the $600M enterprise value funded by debt, the sponsor
-contributes $240M. At exit, after repaying the remaining debt, everything left belongs
-to the sponsor.</div>
-
-<div class="appendix-term">Holding period</div>
-<div class="appendix-def">The number of years between buying and selling the company.
-Most private equity firms hold investments for three to seven years. A longer hold gives
-more time for the business to grow and for debt to be paid down, but also delays when the
-firm receives its cash back.</div>
+financed with borrowed money. The borrowed money is secured against the company's assets and
+repaid from future cash flows. Gains in company value are amplified on the smaller equity check.</div>
 
 <div class="appendix-group-head">Debt and cash flow</div>
 
-<div class="appendix-term">Debt / EV (leverage ratio)</div>
-<div class="appendix-def">The fraction of the purchase price funded by debt. At 60%, a
-$600M acquisition involves $360M of borrowed money and $240M of equity. Higher leverage
-amplifies returns when the business does well, but magnifies losses if it underperforms,
-and increases the risk the company cannot service its interest payments.</div>
-
 <div class="appendix-term">Net leverage (Debt/EBITDA)</div>
-<div class="appendix-def">Total debt divided by annual EBITDA. It answers: how many years of
-operating earnings would it take to repay all the debt? Seven times is considered aggressive
-for most industries; below four times is generally comfortable. This ratio improves over the
-holding period as debt is paid down and EBITDA grows.</div>
+<div class="appendix-def">Total debt divided by annual EBITDA. How many years of operating
+earnings to repay all debt. Seven times is aggressive; below four times is comfortable.</div>
 
 <div class="appendix-term">Interest coverage (EBITDA/Interest)</div>
-<div class="appendix-def">Annual EBITDA divided by annual interest expense. It measures how
-comfortably the business can pay its interest bill. A ratio of 2x means the company earns
-twice what it owes in interest each year. Below 1.5x, lenders get nervous; above 3x is
-generally considered safe.</div>
-
-<div class="appendix-term">Amortization</div>
-<div class="appendix-def">Scheduled repayments of debt principal over time. Unlike interest,
-which is an ongoing cost, amortization permanently reduces the debt balance. In this model,
-amortization is set as a fixed annual percentage of the original debt balance. Paying down
-debt is one of the three sources of equity return in an LBO.</div>
+<div class="appendix-def">Annual EBITDA divided by annual interest expense. Below 1.5x, lenders
+get nervous; above 3x is generally considered safe.</div>
 
 <div class="appendix-term">Free Cash Flow (FCF)</div>
-<div class="appendix-def">The cash a business generates after paying for operations, capital
-expenditures, interest, and taxes. In an LBO, FCF is what services and eventually retires the
-debt. The model computes levered FCF, meaning after all debt costs are deducted. A positive
-and growing FCF profile is the most important operational indicator in an LBO.</div>
-
-<div class="appendix-term">CapEx (Capital Expenditure)</div>
-<div class="appendix-def">Money spent on physical assets needed to run and grow the business.
-CapEx is deducted from earnings when calculating free cash flow because it is a real cash
-outflow, even though accounting treats it differently. Higher CapEx reduces the cash
-available to repay debt.</div>
-
-<div class="appendix-term">NWC (Net Working Capital)</div>
-<div class="appendix-def">The cash tied up in day-to-day operations, such as money owed by
-customers minus money owed to suppliers. As a business grows, it typically needs to invest
-more cash in working capital, which reduces free cash flow. The model assumes working
-capital grows at 10% of incremental revenue.</div>
+<div class="appendix-def">Cash generated after paying for operations, CapEx, interest, and taxes.
+In an LBO, FCF services and eventually retires the debt.</div>
 """, unsafe_allow_html=True)
 
 with app2:
@@ -1618,114 +1533,48 @@ with app2:
 <div class="appendix-group-head">Return metrics</div>
 
 <div class="appendix-term">IRR (Internal Rate of Return)</div>
-<div class="appendix-def">The annualized return on an investment, accounting for the timing
-of cash flows. It answers: at what annual growth rate would the initial investment need to
-compound to match the actual outcome? An IRR of 20% means the equity grew at 20% per year
-over the holding period. PE firms generally target IRRs above 20% and consider anything
-below 15% marginal. IRR is sensitive to holding period: a 2.5x return over 3 years produces
-a much higher IRR than the same 2.5x return over 7 years.</div>
+<div class="appendix-def">The annualized return on an investment, accounting for timing of cash flows.
+PE firms generally target IRRs above 20% and consider anything below 15% marginal.</div>
 
 <div class="appendix-term">MOIC (Multiple of Invested Capital)</div>
-<div class="appendix-def">Total cash returned divided by total cash invested, regardless of
-time. A MOIC of 2.58x means the sponsor received $2.58 for every dollar put in. Unlike IRR,
-MOIC does not account for how long the return took to generate. A 3x MOIC is considered
-excellent; below 2x is generally below hurdle for institutional investors. The two metrics
-together paint a complete picture: a fast, small deal can have high IRR but modest MOIC,
-while a larger deal with a longer hold can show the reverse.</div>
+<div class="appendix-def">Total cash returned divided by total cash invested, regardless of time.
+A MOIC of 3.0x is considered excellent; below 2.0x is generally below hurdle.</div>
 
-<div class="appendix-term">Levered IRR</div>
-<div class="appendix-def">The IRR calculated on the equity investment only, after accounting
-for debt. Because the equity check is smaller than the total enterprise value, leverage
-amplifies this return when the business performs well. This is the primary return metric
-reported to LBO investors.</div>
-
-<div class="appendix-term">Unlevered IRR</div>
-<div class="appendix-def">The return on the underlying business as if it had been purchased
-entirely with equity and no debt. The difference between the levered and unlevered IRR is the
-leverage effect. When the unlevered IRR exceeds the cost of debt, leverage is accretive.
-When the cost of debt exceeds the business return, leverage destroys value.</div>
-
-<div class="appendix-term">IRR Sharpe ratio</div>
-<div class="appendix-def">A risk-adjusted return metric from portfolio theory, calculated as
-(median simulated IRR minus cost of debt) divided by the standard deviation of simulated
-IRRs. A higher ratio means more return per unit of uncertainty. Most useful for comparing
-two deals where one offers higher expected returns but also wider dispersion of outcomes.</div>
-
-<div class="appendix-group-head">Sources of equity return</div>
-
-<div class="appendix-term">EBITDA growth contribution</div>
-<div class="appendix-def">The share of equity gain from the business earning more at exit
-than at entry. If EBITDA grows from $50M to $80M with the exit multiple constant at 11x,
-enterprise value rises $330M from EBITDA growth alone. This is typically the largest and
-most controllable return driver.</div>
-
-<div class="appendix-term">Multiple expansion / compression</div>
-<div class="appendix-def">The gain or loss in enterprise value from a change in the earnings
-multiple between entry and exit. If a business is bought at 12x and sold at 14x, the buyer
-benefits from multiple expansion even if EBITDA did not change. Multiple expansion is the
-most unpredictable return driver, largely a function of market conditions at the time of sale.</div>
-
-<div class="appendix-term">Debt paydown contribution</div>
-<div class="appendix-def">The equity value created by paying down debt over the hold. Every
-dollar of principal repaid is a dollar that does not need to be deducted from exit enterprise
-value when computing equity proceeds. In a five-year hold with 5% annual amortization, the
-sponsor retires 25% of original debt, which flows directly to equity value at exit.</div>
+<div class="appendix-term">Levered IRR vs. Unlevered IRR</div>
+<div class="appendix-def">Levered IRR is calculated on the equity investment after debt costs.
+Unlevered IRR is the return as if the business were purchased entirely with equity. The difference
+is the leverage effect — positive when the business return exceeds the cost of debt.</div>
 
 <div class="appendix-group-head">Risk simulation methodology</div>
 
-<div class="appendix-term">Monte Carlo simulation</div>
-<div class="appendix-def">A way of understanding the range of possible outcomes by running
-many scenarios with randomly drawn inputs. Instead of computing a single IRR for one set of
-assumptions, Monte Carlo runs the same model thousands of times with slightly different
-values each time. The resulting distribution of IRRs shows not just the expected outcome but
-also the realistic upside and downside.</div>
-
 <div class="appendix-term">Quasi-Monte Carlo (QMC) and Sobol sequences</div>
-<div class="appendix-def">A more efficient version of Monte Carlo. Standard Monte Carlo draws
-inputs randomly, so some regions of the parameter space get sampled repeatedly while others
-are missed. Sobol sequences spread the samples as evenly as possible across the parameter
-space, like a precisely spaced grid rather than random scatter. The result is that 512 Sobol
-samples produce answers nearly as accurate as 5,000 or more standard random samples.</div>
+<div class="appendix-def">A more efficient version of Monte Carlo. Sobol sequences spread samples
+evenly across the parameter space. 512 Sobol samples produce answers nearly as accurate as 5,000+
+standard random samples.</div>
 
 <div class="appendix-term">Correlated parameters (Cholesky method)</div>
-<div class="appendix-def">In practice, some model inputs move together: faster-growing
-businesses tend to command higher exit multiples. The Cholesky method generates random
-samples that respect a specified correlation structure. In this model, the correlation
-between revenue growth and exit multiple is adjustable in Section 9; a positive value means
-high-growth simulated paths also tend to exit at higher multiples.</div>
+<div class="appendix-def">Generates random samples that respect a specified correlation structure.
+Here, the correlation between revenue growth and exit multiple is adjustable; a positive value means
+high-growth paths also tend to exit at higher multiples.</div>
 
 <div class="appendix-term">Value at Risk (VaR) and percentile metrics</div>
-<div class="appendix-def">The 5th percentile IRR in the simulation is the value-at-risk
-equivalent: in 95 out of 100 scenarios, the IRR exceeds this number. It is a downside floor,
-not a worst case. The P10 MOIC is the 10th percentile of MOIC outcomes, meaning 90% of
-simulated paths land above it. These metrics frame the downside without fixating on the
-extreme tail.</div>
-
-<div class="appendix-term">Gaussian KDE (kernel density estimate)</div>
-<div class="appendix-def">The smooth curve drawn over the histograms in Figures 9 and 10.
-A histogram groups outcomes into bins and counts how many fall in each, which can look
-ragged with a limited number of samples. A kernel density estimate fits a smooth curve
-through the same data, giving a cleaner sense of the distribution shape. The Silverman
-bandwidth rule determines how smooth the curve should be.</div>
+<div class="appendix-def">The 5th percentile IRR is the downside floor: in 95 out of 100 scenarios,
+IRR exceeds this number. P10 MOIC means 90% of simulated paths land above it.</div>
 
 <div class="appendix-note">
   All model outputs are for educational and illustrative purposes only and do not
-  constitute investment advice. The projections and simulations in this tool
-  do not represent the performance of any actual fund or investment.
+  constitute investment advice.
 </div>
 """, unsafe_allow_html=True)
 
-
 st.markdown(f"""<div class="paper-footer">
   Model parameters: Entry EV/EBITDA = {entry_ev_ebitda:.1f}x; Entry EBITDA = {fmt_m(ebitda_entry)};
-  Entry revenue = {fmt_m(revenue_entry)}; Debt/EV = {debt_pct}%; Interest rate = {interest_rate:.2f}%;
-  Principal amortization = {amort_pct}%/year of initial debt; Revenue growth = {rev_growth}%/year;
-  EBITDA margin expansion = {margin_expansion} bps/year; CapEx = {capex_pct}% of revenue;
-  NWC = {nwc_pct}% of incremental revenue; D&A = {da_pct}% of revenue; Tax rate = {tax_rate}%;
+  Entry revenue = {fmt_m(revenue_entry)}; Debt/EV = {debt_pct:.0f}%; Interest rate = {interest_rate:.2f}%;
+  Principal amortization = {amort_pct:.0f}%/year; Revenue growth = {rev_growth:.0f}%/year;
+  EBITDA margin expansion = {margin_expansion:.0f} bps/year; CapEx = {capex_pct:.0f}% of revenue;
+  NWC = {nwc_pct}% of incremental revenue; D&A = {da_pct}% of revenue; Tax rate = {tax_rate:.0f}%;
   Exit EV/EBITDA = {exit_ev_ebitda:.1f}x; Holding period = {hold_years} years.
-  Base case IRR computed using Newton-Raphson iteration (numpy-financial v1.0).
-  QMC simulation uses scrambled Sobol low-discrepancy sequences (pure numpy, Gray-code enumeration) with
-  Cholesky-induced correlation structure between revenue growth and exit multiple.
-  All figures in USD millions. This model is for educational and illustrative purposes only
-  and does not constitute investment advice.
+  QMC simulation uses scrambled Sobol low-discrepancy sequences (pure numpy) with Cholesky-induced
+  correlation between revenue growth and exit multiple. All figures in USD millions.
+  This model is for educational and illustrative purposes only and does not constitute investment advice.
 </div>""", unsafe_allow_html=True)
