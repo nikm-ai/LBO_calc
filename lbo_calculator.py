@@ -238,6 +238,30 @@ st.markdown("""
     font-size: 11px !important; font-weight: 500 !important;
     letter-spacing: 0.02em; opacity: 0.7;
   }
+
+  /* Appendix */
+  .appendix-term {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.03em;
+    color: var(--text-color); margin-bottom: 2px;
+  }
+  .appendix-def {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 14.5px; line-height: 1.75; color: var(--text-color);
+    opacity: 0.82; margin-bottom: 1rem;
+  }
+  .appendix-group-head {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--text-color); opacity: 0.35;
+    margin: 1.8rem 0 0.8rem; padding-bottom: 4px;
+    border-bottom: 1px solid rgba(128,128,128,0.12);
+  }
+  .appendix-note {
+    font-family: 'EB Garamond', Georgia, serif;
+    font-size: 13.5px; line-height: 1.8; color: var(--text-color);
+    opacity: 0.7; font-style: italic; margin-top: 1.5rem;
+  }
 </style>
 """, unsafe_allow_html=True)
 
@@ -311,12 +335,12 @@ st.markdown("""
 <div class="abstract-box">
   <div class="abstract-label">Overview</div>
   <div class="abstract-text">
-    A leveraged buyout (LBO) is an acquisition in which the purchase price is financed primarily
-    with debt, leaving the acquirer — typically a private equity sponsor — to contribute a
-    relatively small equity check. The acquired company's own cash flows service the debt over
-    the holding period. Upon exit, the sponsor receives the residual equity value after repaying
-    outstanding debt. The use of leverage amplifies equity returns when the underlying business
-    return exceeds the cost of debt, and destroys value when it does not.
+    A leveraged buyout (LBO) is an acquisition financed primarily with debt, leaving the buyer,
+    typically a private equity sponsor, to contribute a relatively small equity check. The
+    acquired company's own cash flows service the debt over the holding period. Upon exit, the
+    sponsor receives the residual equity value after repaying outstanding debt. Leverage
+    amplifies equity returns when the underlying business return exceeds the cost of debt,
+    and destroys value when it does not.
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -326,32 +350,33 @@ with col_e1:
     st.markdown('<div class="explainer-head">The mechanics of leverage</div>', unsafe_allow_html=True)
     st.markdown("""<div class="explainer-body">
       In a conventional acquisition, a buyer pays the full purchase price in cash or stock.
-      In an LBO, the buyer finances 50–70% of the purchase price with debt — secured against
-      the target company's assets and cash flows — and contributes only the remainder as equity.
-      This structure means a given improvement in enterprise value translates into a proportionally
-      larger improvement in equity value, because the debt claim is fixed. A business purchased
-      for $600M with $360M of debt and $240M of equity that exits at $700M returns $430M to
-      equity holders — a 79% gain on a 17% increase in enterprise value.
+      In an LBO, the buyer finances 50 to 70% of the purchase price with debt secured against
+      the target company's assets and cash flows, contributing only the remainder as equity.
+      Because the debt claim is fixed, any improvement in enterprise value flows
+      disproportionately to equity holders. A business purchased for $600M with $360M of debt
+      and $240M of equity that exits at $700M returns $430M to equity holders: a 79% gain on
+      a 17% increase in enterprise value.
     </div>""", unsafe_allow_html=True)
 with col_e2:
     st.markdown('<div class="explainer-head">Sources of equity return</div>', unsafe_allow_html=True)
     st.markdown("""<div class="explainer-body">
-      Equity returns in an LBO come from three sources. First, <em>EBITDA growth</em>: if the
-      business earns more at exit, the enterprise value rises proportionally (assuming a constant
-      exit multiple). Second, <em>multiple expansion</em>: if the market assigns a higher earnings
-      multiple at exit, the enterprise value rises even without profit growth — this is the most
-      volatile and least controllable return driver. Third, <em>debt paydown</em>: as free cash
-      flow retires debt principal, a larger share of enterprise value accrues to equity holders.
+      Equity returns in an LBO come from three places. First, <em>EBITDA growth</em>: if the
+      business earns more at exit, the enterprise value rises proportionally given a constant
+      exit multiple. Second, <em>multiple expansion</em>: if the market prices the business
+      at a higher earnings multiple at exit, enterprise value rises even without profit growth.
+      This is the most volatile and least controllable return driver. Third, <em>debt paydown</em>:
+      as free cash flow retires principal, a larger share of enterprise value accrues to equity
+      holders at exit.
     </div>""", unsafe_allow_html=True)
 with col_e3:
     st.markdown('<div class="explainer-head">Key metrics and thresholds</div>', unsafe_allow_html=True)
     st.markdown("""<div class="explainer-body">
       PE investors evaluate transactions primarily on <em>IRR</em> and <em>MOIC</em>. An IRR
-      above 20% is generally considered a strong return; below 15% is marginal for most
-      institutional sponsors. A MOIC above 3.0x is excellent; below 2.0x is typically below
-      hurdle. Leverage quality is assessed through <em>net leverage</em> (debt/EBITDA) and
+      above 20% is generally considered strong; below 15% is marginal for most institutional
+      sponsors. A MOIC above 3.0x is excellent; below 2.0x is typically below hurdle.
+      Leverage quality is assessed through <em>net leverage</em> (debt/EBITDA) and
       <em>interest coverage</em> (EBITDA/interest). Entry leverage above 7x EBITDA is
-      considered aggressive; coverage below 2x raises refinancing risk.
+      considered aggressive, and coverage below 2x raises refinancing risk.
     </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -915,10 +940,10 @@ def style_moic(v):
 
 st1, st2 = st.columns(2)
 with st1:
-    st.markdown("**Levered IRR — exit multiple (columns) vs. entry debt % (rows)**")
+    st.markdown("**Levered IRR: exit multiple (columns) vs. entry debt % (rows)**")
     st.dataframe(sens_irr_df.style.applymap(style_irr), use_container_width=True)
 with st2:
-    st.markdown("**MOIC — exit multiple (columns) vs. entry debt % (rows)**")
+    st.markdown("**MOIC: exit multiple (columns) vs. entry debt % (rows)**")
     st.dataframe(sens_moic_df.style.applymap(style_moic), use_container_width=True)
 
 st.markdown(f"""<div class="fig-caption">
@@ -996,21 +1021,21 @@ st.markdown("""
 <div class="abstract-box">
   <div class="abstract-label">Methodology</div>
   <div class="abstract-text">
-    This section employs <em>Quasi-Monte Carlo (QMC) simulation</em> using low-discrepancy
-    Sobol sequences — a statistically superior alternative to standard pseudo-random Monte Carlo.
-    Sobol sampling fills the parameter space far more uniformly than random draws, achieving
-    comparable convergence with 512 samples that standard Monte Carlo requires 5,000+ samples to
-    approximate. Each simulation draws jointly from distributions over the five primary
-    uncertainty drivers — revenue growth, margin expansion, exit multiple, interest rate, and
-    entry leverage — and computes the full IRR and MOIC for each path. The result is an
-    empirical return distribution with proper coverage of tail scenarios, enabling
-    VaR-style downside risk quantification.
+    This section uses <em>Quasi-Monte Carlo (QMC) simulation</em> with low-discrepancy Sobol
+    sequences, a statistically sounder alternative to standard pseudo-random Monte Carlo.
+    Sobol sampling covers the parameter space far more uniformly than random draws; 512 samples
+    achieve convergence that standard Monte Carlo typically needs 5,000 or more samples to reach.
+    Each simulation draws jointly from distributions over five uncertainty drivers: revenue growth,
+    margin expansion, exit multiple, interest rate, and entry leverage. The full IRR and MOIC are
+    computed for each path, producing an empirical return distribution with good tail coverage
+    and clean downside quantification.
   </div>
   <div class="abstract-text" style="margin-top:0.75rem; font-size:14px; opacity:0.75;">
-    <b>Model limitations.</b> This model assumes uniform annual amortization, a flat revenue growth
-    rate, and an exit multiple independent of holding period — simplifications that diverge from
-    actual deal mechanics (tiered debt tranches, seasonal FCF, multiple decay over time).
-    Sensitivity ranges should be interpreted as illustrative of structural return dynamics, not as forecasts.
+    <b>Limitations.</b> The model assumes uniform annual amortization, a flat revenue growth
+    rate, and an exit multiple that does not vary with holding period. These simplifications
+    depart from actual deal mechanics, which involve tiered debt tranches, seasonal cash flows,
+    and multiple compression over longer holds. Results should be read as structurally
+    illustrative, not as forecasts.
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1159,7 +1184,7 @@ moic_p10         = np.percentile(valid_moics, 10)
 sharpe_cls = "pos" if sharpe_irr >= 1.5 else "warn" if sharpe_irr >= 0.8 else "neg"
 st.markdown(f"""
 <div class="risk-banner">
-  <div class="risk-banner-title">QMC simulation summary — {qmc_n} Sobol paths</div>
+  <div class="risk-banner-title">QMC simulation summary: {qmc_n} Sobol paths</div>
   <span class="risk-stat">
     <span class="risk-stat-label">Median IRR</span>
     <span class="risk-stat-val {'pos' if median_irr >= 20 else 'warn' if median_irr >= 12 else 'neg'}">{median_irr:.1f}%</span>
@@ -1214,7 +1239,7 @@ with qc1:
         fig_irr_dist.add_trace(go.Scatter(
             x=kde_x, y=kde_cnt,
             mode="lines", name="KDE",
-            line=dict(color=BLUE, width=2.5),
+            line=dict(color="#2a2a2a", width=2.5),
             hoverinfo="skip",
         ))
 
@@ -1268,7 +1293,7 @@ with qc2:
         fig_moic_dist.add_trace(go.Scatter(
             x=kde_mx, y=kde_mcnt,
             mode="lines", name="KDE",
-            line=dict(color=GREEN, width=2.5),
+            line=dict(color="#2a2a2a", width=2.5),
             hoverinfo="skip",
         ))
 
@@ -1314,7 +1339,7 @@ fig_scatter.add_trace(go.Scatter(
     marker=dict(
         color=qmc_irrs,
         colorscale=[[0, "#c47a7a"], [0.45, "#f0ece3"], [1, "#6ab06a"]],
-        size=7, opacity=0.75,
+        size=8, opacity=0.85,
         colorbar=dict(
             title=dict(text="IRR (%)", font=dict(size=11, color="#333333")),
             tickfont=dict(size=10, color="#444444"), thickness=10,
@@ -1353,15 +1378,17 @@ fig_scatter.add_trace(go.Box(
 ), row=2, col=2)
 
 fig_scatter.update_layout(
-    **BASE, height=400, showlegend=False,
-    xaxis2=dict(**ax("Simulated revenue growth (%)", grid=True), ticksuffix="%",
+    **BASE, height=420, showlegend=False,
+    xaxis2=dict(**ax("Revenue growth (%)", grid=True), ticksuffix="%",
                 domain=[0, 0.81]),
-    yaxis3=dict(**ax("Simulated exit multiple (x)", grid=True), ticksuffix="x"),
-    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False,
+    yaxis3=dict(**ax("Exit multiple (x)", grid=True), ticksuffix="x"),
+    xaxis=dict(title=dict(text="Growth distribution", font=dict(size=10, color="#888")),
+               showticklabels=False, showgrid=False, zeroline=False,
                linecolor="#d4c9b8", linewidth=1),
     yaxis=dict(showticklabels=False, showgrid=False, zeroline=False,
                linecolor="#d4c9b8", linewidth=1),
-    yaxis4=dict(showticklabels=False, showgrid=False, zeroline=False,
+    yaxis4=dict(title=dict(text="Multiple dist.", font=dict(size=10, color="#888")),
+                showticklabels=False, showgrid=False, zeroline=False,
                 linecolor="#d4c9b8", linewidth=1),
     xaxis4=dict(showticklabels=False, showgrid=False, zeroline=False,
                 linecolor="#d4c9b8", linewidth=1),
@@ -1381,7 +1408,8 @@ st.markdown('<div class="sec-header">10. Scenario comparison</div>', unsafe_allo
 
 st.markdown("""<div class="explainer-body" style="margin-bottom:1rem;">
   Define up to two additional scenarios to compare against the current base case.
-  All other parameters inherit base case values unless overridden.
+  Entry EBITDA, revenue, CapEx, amortization, and hold period are inherited from the base case;
+  the six inputs below are the ones that typically differ across deal structures.
 </div>""", unsafe_allow_html=True)
 
 sc_col1, sc_col2 = st.columns(2)
@@ -1450,13 +1478,13 @@ sc_df = pd.DataFrame(sc_results).set_index("Scenario")
 st.dataframe(sc_df, use_container_width=True)
 
 # Side-by-side IRR + MOIC bar comparison
-sc_names  = [r["Scenario"] for r in sc_results]
+sc_names_short = ["Base", "Downside", "Upside"]
 sc_irrs   = [float(r["Levered IRR"].replace("%","")) if r["Levered IRR"] != "n/a" else 0 for r in sc_results]
 sc_moics  = [float(r["MOIC"].replace("x","")) for r in sc_results]
 
 fig_sc = make_subplots(rows=1, cols=2,
     subplot_titles=["Levered IRR by Scenario", "MOIC by Scenario"])
-for i, (nm, irr_v, moic_v) in enumerate(zip(sc_names, sc_irrs, sc_moics)):
+for i, (nm, irr_v, moic_v) in enumerate(zip(sc_names_short, sc_irrs, sc_moics)):
     c = SCEN_COLORS[i]
     fig_sc.add_trace(go.Bar(x=[nm], y=[irr_v], marker_color=c, opacity=0.8,
                              text=[f"{irr_v:.1f}%"], textposition="outside",
@@ -1482,8 +1510,224 @@ st.markdown("""<div class="fig-caption">
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# FOOTER
+# APPENDIX — PLAIN-LANGUAGE GUIDE FOR NON-TECHNICAL READERS
 # ══════════════════════════════════════════════════════════════════════════
+st.markdown('<div class="sec-header">Appendix: terminology, metrics, and methodology</div>', unsafe_allow_html=True)
+
+st.markdown("""
+<div class="abstract-box">
+  <div class="abstract-label">Who this appendix is for</div>
+  <div class="abstract-text">
+    This appendix is written for readers who are not financial professionals or data scientists.
+    It explains every term used in the model in plain language, describes how the key metrics
+    are calculated, and walks through the statistical methods used in the risk simulation section.
+    No prior knowledge of finance or statistics is assumed.
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+app1, app2 = st.columns(2)
+
+with app1:
+    st.markdown("""
+<div class="appendix-group-head">Deal structure and valuation</div>
+
+<div class="appendix-term">Enterprise Value (EV)</div>
+<div class="appendix-def">The total price paid to acquire a business, including both the debt
+borrowed and the equity contributed by the buyer. Think of it as what you would pay to own the
+company outright with no debt attached. In the model, EV equals the entry EV/EBITDA multiple
+times the company's EBITDA at acquisition.</div>
+
+<div class="appendix-term">EBITDA</div>
+<div class="appendix-def">Earnings Before Interest, Taxes, Depreciation, and Amortization.
+It is the most common measure of a business's underlying operating profit, stripping out
+financing costs and accounting adjustments to give a cleaner view of cash generation.
+In private equity, EBITDA is the primary yardstick for valuing a business and sizing debt.</div>
+
+<div class="appendix-term">EV/EBITDA multiple</div>
+<div class="appendix-def">The ratio of enterprise value to EBITDA. If a business earns $50M
+in EBITDA and is purchased at 12x, the enterprise value is $600M. Higher multiples reflect
+faster-growing businesses or competitive auction processes. The same multiple framework is
+used at entry and exit; if the exit multiple is lower than the entry multiple, that is called
+multiple compression, which hurts returns.</div>
+
+<div class="appendix-term">Leveraged Buyout (LBO)</div>
+<div class="appendix-def">An acquisition where a large portion of the purchase price is
+financed with borrowed money rather than the buyer's own cash. The borrowed money is secured
+against the company's assets and is repaid using the company's future cash flows. The buyer
+puts in a smaller equity check, which means any gains in the company's value are amplified
+on that smaller investment.</div>
+
+<div class="appendix-term">Sponsor equity</div>
+<div class="appendix-def">The cash the private equity firm actually writes a check for.
+In the base case, with 60% of the $600M enterprise value funded by debt, the sponsor
+contributes $240M. At exit, after repaying the remaining debt, everything left belongs
+to the sponsor.</div>
+
+<div class="appendix-term">Holding period</div>
+<div class="appendix-def">The number of years between buying and selling the company.
+Most private equity firms hold investments for three to seven years. A longer hold gives
+more time for the business to grow and for debt to be paid down, but also delays when the
+firm receives its cash back.</div>
+
+<div class="appendix-group-head">Debt and cash flow</div>
+
+<div class="appendix-term">Debt / EV (leverage ratio)</div>
+<div class="appendix-def">The fraction of the purchase price funded by debt. At 60%, a
+$600M acquisition involves $360M of borrowed money and $240M of equity. Higher leverage
+amplifies returns when the business does well, but magnifies losses if it underperforms,
+and increases the risk that the company cannot service its interest payments.</div>
+
+<div class="appendix-term">Net leverage (Debt/EBITDA)</div>
+<div class="appendix-def">Total debt divided by annual EBITDA. It answers the question:
+how many years of operating earnings would it take to pay off all the debt? Seven times
+is considered aggressive for most industries; below four times is generally comfortable.
+This ratio improves over the holding period as debt is paid down and EBITDA grows.</div>
+
+<div class="appendix-term">Interest coverage (EBITDA/Interest)</div>
+<div class="appendix-def">Annual EBITDA divided by annual interest expense. It measures
+how comfortably the business can pay its interest bill. A ratio of 2x means the company
+earns twice what it owes in interest each year. Below 1.5x, lenders get nervous.
+Above 3x is generally considered safe.</div>
+
+<div class="appendix-term">Amortization</div>
+<div class="appendix-def">Scheduled repayments of debt principal over time. Unlike
+interest, which is an ongoing cost, amortization permanently reduces the debt balance.
+In this model, amortization is set as a fixed percentage of the original debt balance
+paid each year. Paying down debt is one of the three sources of equity return in an LBO.</div>
+
+<div class="appendix-term">Free Cash Flow (FCF)</div>
+<div class="appendix-def">The cash a business generates after paying for operations,
+capital expenditures, interest, and taxes. In an LBO, FCF is what services and eventually
+retires the debt. The model computes levered FCF, meaning after all debt costs are deducted.
+A positive and growing FCF profile is the most important operational indicator in an LBO.</div>
+
+<div class="appendix-term">CapEx (Capital Expenditure)</div>
+<div class="appendix-def">Money spent on physical assets like equipment and infrastructure
+needed to run and grow the business. CapEx is deducted from earnings when calculating free
+cash flow because it is a real cash outflow, even though accounting treats it differently.
+Higher CapEx reduces the cash available to repay debt.</div>
+
+<div class="appendix-term">NWC (Net Working Capital)</div>
+<div class="appendix-def">The cash tied up in the day-to-day operations of the business,
+such as money owed by customers minus money owed to suppliers. As a business grows, it
+typically needs to invest more cash in working capital, which reduces free cash flow.
+The model assumes working capital grows at 10% of incremental revenue.</div>
+""", unsafe_allow_html=True)
+
+with app2:
+    st.markdown("""
+<div class="appendix-group-head">Return metrics</div>
+
+<div class="appendix-term">IRR (Internal Rate of Return)</div>
+<div class="appendix-def">The annualized percentage return on an investment, accounting
+for the timing of cash flows. It answers: at what annual growth rate would my initial
+investment need to compound to match the actual outcome? An IRR of 20% means the equity
+grew at 20% per year over the holding period. Private equity firms generally target IRRs
+above 20% and consider anything below 15% marginal. IRR is sensitive to holding period:
+a 2.5x return over 3 years produces a much higher IRR than the same 2.5x return over 7 years.</div>
+
+<div class="appendix-term">MOIC (Multiple of Invested Capital)</div>
+<div class="appendix-def">Total cash returned divided by total cash invested, regardless
+of time. A MOIC of 2.58x means the sponsor received $2.58 for every dollar invested.
+Unlike IRR, MOIC does not account for how long it took to generate the return. A 3x MOIC
+is considered excellent; below 2x is generally below the hurdle for institutional investors.
+MOIC and IRR together paint a complete picture: high IRR on a small, fast deal can have
+a lower MOIC than a longer, larger deal with lower IRR.</div>
+
+<div class="appendix-term">Levered IRR</div>
+<div class="appendix-def">The IRR calculated on the equity investment only, after
+accounting for the effect of debt. Because the equity check is smaller than the total
+enterprise value, leverage amplifies this return when the business performs well.
+This is the primary return metric reported to LBO investors.</div>
+
+<div class="appendix-term">Unlevered IRR</div>
+<div class="appendix-def">The return on the underlying business as if it had been
+purchased entirely with equity and no debt. This is equivalent to asking: how well
+did the business itself perform, separate from the financing structure? The difference
+between the levered and unlevered IRR is the leverage effect. When the unlevered IRR
+exceeds the cost of debt, leverage is accretive. When the cost of debt exceeds the
+business return, leverage destroys value.</div>
+
+<div class="appendix-term">IRR Sharpe ratio</div>
+<div class="appendix-def">A risk-adjusted return metric borrowed from portfolio theory.
+It is calculated as (median simulated IRR minus cost of debt) divided by the standard
+deviation of simulated IRRs. A higher ratio means more return per unit of uncertainty.
+This metric is most useful for comparing two deals where one has higher expected
+returns but also higher dispersion of outcomes.</div>
+
+<div class="appendix-group-head">Sources of equity return</div>
+
+<div class="appendix-term">EBITDA growth contribution</div>
+<div class="appendix-def">The portion of equity gain attributable to the business
+earning more at exit than at entry. If a company's EBITDA grows from $50M to $80M and
+the exit multiple stays constant at 11x, enterprise value rises by $330M from EBITDA
+growth alone. This is typically the largest and most controllable return driver.</div>
+
+<div class="appendix-term">Multiple expansion / compression</div>
+<div class="appendix-def">The gain or loss in enterprise value from a change in the
+earnings multiple between entry and exit. If a business is bought at 12x EBITDA and
+sold at 14x, the buyer benefits from multiple expansion even if EBITDA did not change.
+Multiple expansion is the most unpredictable return driver and is largely a function
+of market conditions at the time of sale.</div>
+
+<div class="appendix-term">Debt paydown contribution</div>
+<div class="appendix-def">The equity value created simply by paying down debt over the
+holding period. Every dollar of principal repaid is a dollar that does not need to be
+deducted from the exit enterprise value when computing equity proceeds. In a standard
+five-year hold with 5% annual amortization, the sponsor pays down 25% of the original
+debt, which accrues directly to equity value at exit.</div>
+
+<div class="appendix-group-head">Risk simulation methodology</div>
+
+<div class="appendix-term">Monte Carlo simulation</div>
+<div class="appendix-def">A technique for understanding the range of possible outcomes
+by running thousands of scenarios with randomly drawn inputs. Instead of computing a
+single IRR for one set of assumptions, Monte Carlo runs the same model thousands of times,
+each with slightly different values for growth, margins, interest rates, and so on.
+The resulting distribution of IRRs shows not just the expected outcome but also the
+realistic best and worst cases.</div>
+
+<div class="appendix-term">Quasi-Monte Carlo (QMC) and Sobol sequences</div>
+<div class="appendix-def">A more efficient version of Monte Carlo simulation. Standard
+Monte Carlo draws inputs randomly, which means some regions of the parameter space get
+sampled many times while others are missed. Sobol sequences use a mathematical
+construction to spread the samples as evenly as possible across the parameter space,
+like a perfectly spaced grid rather than random scatter. This means 512 Sobol samples
+produce results nearly as accurate as 5,000 or more standard random samples.</div>
+
+<div class="appendix-term">Correlated parameters (Cholesky method)</div>
+<div class="appendix-def">In reality, some model inputs move together. Businesses that
+grow faster tend to command higher exit multiples, for example. The Cholesky method is
+a standard mathematical technique for generating random samples that respect a specified
+correlation structure. In this model, the correlation between revenue growth and exit
+multiple can be adjusted using the slider in Section 9. A positive correlation means
+fast-growing simulated paths also tend to exit at higher multiples.</div>
+
+<div class="appendix-term">Value at Risk (VaR) and percentile metrics</div>
+<div class="appendix-def">In the simulation output, the 5th percentile IRR is the
+value-at-risk equivalent: in 95 out of 100 simulated scenarios, the IRR exceeds this
+number. It is a downside floor, not a worst-case scenario. The P10 MOIC is the 10th
+percentile of MOIC outcomes, meaning 90% of simulated paths produce a MOIC above
+this level. These metrics help investors understand the downside without fixating on
+the extreme tail.</div>
+
+<div class="appendix-term">Gaussian KDE (kernel density estimate)</div>
+<div class="appendix-def">The smooth curved line drawn over the histogram in Figures
+9 and 10. A histogram groups outcomes into bins and counts how many fall in each bin,
+which can look ragged with a limited number of samples. A kernel density estimate fits
+a smooth curve through the same data, giving a better visual sense of the underlying
+distribution shape. The Silverman bandwidth rule used here is the standard method
+for choosing how smooth the curve should be.</div>
+
+<div class="appendix-note">
+  All model outputs are for educational and illustrative purposes only and do not
+  constitute investment advice. The projections and simulations in this tool
+  do not represent the performance of any actual fund or investment.
+</div>
+""", unsafe_allow_html=True)
+
+
 st.markdown(f"""<div class="paper-footer">
   Model parameters: Entry EV/EBITDA = {entry_ev_ebitda:.1f}x; Entry EBITDA = {fmt_m(ebitda_entry)};
   Entry revenue = {fmt_m(revenue_entry)}; Debt/EV = {debt_pct}%; Interest rate = {interest_rate:.2f}%;
