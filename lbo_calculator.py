@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
 from plotly.subplots import make_subplots
 import numpy_financial as npf
 
@@ -277,6 +276,22 @@ def fmt_pct(v): return f"{v*100:.1f}%"
 def irr_calc(cfs):
     try:    return npf.irr(cfs)
     except: return np.nan
+
+def kde_curve(data, n_pts=300, bw_factor=1.0):
+    """Pure-numpy Gaussian KDE. Returns (x_grid, density) scaled to histogram counts."""
+    data  = np.asarray(data)
+    n     = len(data)
+    std   = np.std(data)
+    if std == 0 or n < 2:
+        return np.array([]), np.array([])
+    # Silverman bandwidth
+    bw = bw_factor * 1.06 * std * n ** (-0.2)
+    lo, hi = data.min() - 3 * bw, data.max() + 3 * bw
+    x  = np.linspace(lo, hi, n_pts)
+    # Vectorised: (n_pts, n) kernel evaluations
+    z  = (x[:, None] - data[None, :]) / bw
+    density = np.exp(-0.5 * z**2).sum(axis=1) / (n * bw * np.sqrt(2 * np.pi))
+    return x, density
 
 # ══════════════════════════════════════════════════════════════════════════
 # TITLE
@@ -991,6 +1006,12 @@ st.markdown("""
     empirical return distribution with proper coverage of tail scenarios, enabling
     VaR-style downside risk quantification.
   </div>
+  <div class="abstract-text" style="margin-top:0.75rem; font-size:14px; opacity:0.75;">
+    <b>Model limitations.</b> This model assumes uniform annual amortization, a flat revenue growth
+    rate, and an exit multiple independent of holding period — simplifications that diverge from
+    actual deal mechanics (tiered debt tranches, seasonal FCF, multiple decay over time).
+    Sensitivity ranges should be interpreted as illustrative of structural return dynamics, not as forecasts.
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -1174,23 +1195,38 @@ st.markdown(f"""
 qc1, qc2 = st.columns(2)
 
 with qc1:
-    # IRR distribution with VaR annotation
+    # IRR distribution: histogram + KDE overlay
     fig_irr_dist = go.Figure()
+
+    # Histogram (counts)
     fig_irr_dist.add_trace(go.Histogram(
-        x=valid_irrs, nbinsx=40,
-        marker_color=LBLUE, opacity=0.75,
+        x=valid_irrs, nbinsx=35,
+        marker_color=LBLUE, opacity=0.55,
         name="Simulated IRR",
         hovertemplate="IRR: %{x:.1f}%<br>Count: %{y}<extra></extra>",
     ))
-    # Shade tail
+
+    # KDE line — scale density to match histogram count axis
+    kde_x, kde_dens = kde_curve(valid_irrs, bw_factor=0.9)
+    if len(kde_x):
+        bin_w   = (valid_irrs.max() - valid_irrs.min()) / 35
+        kde_cnt = kde_dens * len(valid_irrs) * bin_w
+        fig_irr_dist.add_trace(go.Scatter(
+            x=kde_x, y=kde_cnt,
+            mode="lines", name="KDE",
+            line=dict(color=BLUE, width=2.5),
+            hoverinfo="skip",
+        ))
+
+    # Tail shading
     fig_irr_dist.add_vrect(
-        x0=min(valid_irrs), x1=var_5pct,
-        fillcolor=LRED, opacity=0.15, line_width=0,
+        x0=valid_irrs.min(), x1=var_5pct,
+        fillcolor=LRED, opacity=0.13, line_width=0,
         annotation_text="5th pctile", annotation_position="top left",
         annotation_font=dict(size=9, color=RED),
     )
     fig_irr_dist.add_vline(x=irr_levered*100, line_dash="dash", line_color=BLUE, line_width=2,
-                            annotation_text=f"Base case ({irr_str})",
+                            annotation_text=f"Base ({irr_str})",
                             annotation_font=dict(size=10, color=BLUE),
                             annotation_position="top right")
     fig_irr_dist.add_vline(x=median_irr, line_dash="dot", line_color=GREEN, line_width=1.5,
@@ -1202,30 +1238,43 @@ with qc1:
                             annotation_font=dict(size=9, color=GRAY),
                             annotation_position="bottom right")
     fig_irr_dist.update_layout(
-        **BASE, height=320, showlegend=False,
+        **BASE, height=320, showlegend=False, barmode="overlay",
         xaxis=dict(**ax("Levered IRR (%)"), ticksuffix="%"),
-        yaxis=dict(**ax("Frequency")),
+        yaxis=dict(**ax("Count")),
     )
     st.plotly_chart(fig_irr_dist, use_container_width=True)
     st.markdown(f"""<div class="fig-caption">
-      <b>Figure 9.</b> Distribution of levered IRR across {qmc_n} Sobol QMC paths.
-      The red-shaded region marks the 5th percentile tail (VaR equivalent at {var_5pct:.1f}%).
-      The base case IRR ({irr_str}) is shown as a dashed reference line. {pct_above_hurdle:.0f}% of
-      simulated paths clear the 20% institutional hurdle.
+      <b>Figure 9.</b> Distribution of levered IRR across {qmc_n} Sobol QMC paths, with Gaussian
+      KDE overlay (Silverman bandwidth). The red-shaded region marks the 5th percentile tail
+      (VaR equivalent at {var_5pct:.1f}%). Base case IRR ({irr_str}) shown as dashed line.
+      {pct_above_hurdle:.0f}% of simulated paths clear the 20% institutional hurdle.
     </div>""", unsafe_allow_html=True)
 
 with qc2:
-    # MOIC distribution
+    # MOIC distribution: histogram + KDE overlay
     fig_moic_dist = go.Figure()
+
     fig_moic_dist.add_trace(go.Histogram(
-        x=valid_moics, nbinsx=40,
-        marker_color=LGREEN, opacity=0.75,
+        x=valid_moics, nbinsx=35,
+        marker_color=LGREEN, opacity=0.55,
         name="Simulated MOIC",
         hovertemplate="MOIC: %{x:.2f}x<br>Count: %{y}<extra></extra>",
     ))
+
+    kde_mx, kde_md = kde_curve(valid_moics, bw_factor=0.9)
+    if len(kde_mx):
+        bin_wm   = (valid_moics.max() - valid_moics.min()) / 35
+        kde_mcnt = kde_md * len(valid_moics) * bin_wm
+        fig_moic_dist.add_trace(go.Scatter(
+            x=kde_mx, y=kde_mcnt,
+            mode="lines", name="KDE",
+            line=dict(color=GREEN, width=2.5),
+            hoverinfo="skip",
+        ))
+
     fig_moic_dist.add_vrect(
-        x0=min(valid_moics), x1=moic_p10,
-        fillcolor=LRED, opacity=0.15, line_width=0,
+        x0=valid_moics.min(), x1=moic_p10,
+        fillcolor=LRED, opacity=0.13, line_width=0,
         annotation_text="P10 downside", annotation_position="top left",
         annotation_font=dict(size=9, color=RED),
     )
@@ -1238,52 +1287,91 @@ with qc2:
                              annotation_font=dict(size=9, color=GRAY),
                              annotation_position="bottom right")
     fig_moic_dist.update_layout(
-        **BASE, height=320, showlegend=False,
+        **BASE, height=320, showlegend=False, barmode="overlay",
         xaxis=dict(**ax("MOIC (x)"), ticksuffix="x"),
-        yaxis=dict(**ax("Frequency")),
+        yaxis=dict(**ax("Count")),
     )
     st.plotly_chart(fig_moic_dist, use_container_width=True)
     st.markdown(f"""<div class="fig-caption">
-      <b>Figure 10.</b> Distribution of MOIC across {qmc_n} Sobol paths.
-      The P10 downside MOIC is {moic_p10:.2f}x; median MOIC is {median_moic:.2f}x.
+      <b>Figure 10.</b> Distribution of MOIC across {qmc_n} Sobol paths, with Gaussian KDE overlay.
+      P10 downside MOIC: {moic_p10:.2f}x; median MOIC: {median_moic:.2f}x.
       {np.mean(valid_moics >= 3.0)*100:.0f}% of paths achieve the 3.0x excellent threshold.
     </div>""", unsafe_allow_html=True)
 
-# ── QMC Scatter: growth vs multiple colored by IRR ─────────────────────────
-fig_scatter = go.Figure(go.Scatter(
+# ── QMC Scatter: growth vs multiple colored by IRR, with marginal rug ticks ──
+fig_scatter = make_subplots(
+    rows=2, cols=2,
+    column_widths=[0.82, 0.18],
+    row_heights=[0.18, 0.82],
+    shared_xaxes=True, shared_yaxes=True,
+    horizontal_spacing=0.01, vertical_spacing=0.01,
+)
+
+# Main scatter (row 2, col 1)
+fig_scatter.add_trace(go.Scatter(
     x=qmc_gr, y=qmc_em,
     mode="markers",
     marker=dict(
-        color=qmc_irrs, colorscale=[[0, "#c47a7a"], [0.5, "#f7f7f7"], [1, "#6ab06a"]],
-        size=5, opacity=0.6,
+        color=qmc_irrs,
+        colorscale=[[0, "#c47a7a"], [0.45, "#f0ece3"], [1, "#6ab06a"]],
+        size=7, opacity=0.75,
         colorbar=dict(
             title=dict(text="IRR (%)", font=dict(size=11, color="#333333")),
-            tickfont=dict(size=10, color="#444444"), thickness=12,
+            tickfont=dict(size=10, color="#444444"), thickness=10,
+            x=0.81, len=0.82, y=0.09, yanchor="bottom",
         ),
         cmin=np.percentile(valid_irrs, 2),
         cmax=np.percentile(valid_irrs, 98),
-        line=dict(width=0),
+        line=dict(width=0.5, color="rgba(255,255,255,0.4)"),
     ),
     hovertemplate="Growth: %{x:.1f}%<br>Exit multiple: %{y:.1f}x<br>IRR: %{marker.color:.1f}%<extra></extra>",
-))
-fig_scatter.add_scatter(
-    x=[rev_growth], y=[exit_ev_ebitda],
-    mode="markers",
-    marker=dict(symbol="star", size=14, color=BLUE, line=dict(color="white", width=1.5)),
-    name="Base case",
-)
+), row=2, col=1)
+
+# Base case star
+fig_scatter.add_trace(go.Scatter(
+    x=[rev_growth], y=[exit_ev_ebitda], mode="markers",
+    marker=dict(symbol="star", size=16, color=BLUE,
+                line=dict(color="white", width=1.5)),
+    name="Base case", hovertemplate="Base case<extra></extra>",
+), row=2, col=1)
+
+# Top rug — growth distribution
+fig_scatter.add_trace(go.Box(
+    x=qmc_gr, name="", marker_color=LBLUE,
+    line_color=LBLUE, fillcolor=LLBLUE,
+    boxpoints=False, notched=False,
+    hoverinfo="skip", showlegend=False,
+), row=1, col=1)
+
+# Right rug — exit multiple distribution
+fig_scatter.add_trace(go.Box(
+    y=qmc_em, name="", marker_color=LGREEN,
+    line_color=LGREEN, fillcolor=LLGREEN,
+    boxpoints=False, notched=False,
+    hoverinfo="skip", showlegend=False,
+    orientation="v",
+), row=2, col=2)
+
 fig_scatter.update_layout(
-    **BASE, height=340,
-    xaxis=dict(**ax("Simulated revenue growth (%)"), ticksuffix="%"),
-    yaxis=dict(**ax("Simulated exit multiple (x)"), ticksuffix="x"),
-    showlegend=False,
+    **BASE, height=400, showlegend=False,
+    xaxis2=dict(**ax("Simulated revenue growth (%)", grid=True), ticksuffix="%",
+                domain=[0, 0.81]),
+    yaxis3=dict(**ax("Simulated exit multiple (x)", grid=True), ticksuffix="x"),
+    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False,
+               linecolor="#d4c9b8", linewidth=1),
+    yaxis=dict(showticklabels=False, showgrid=False, zeroline=False,
+               linecolor="#d4c9b8", linewidth=1),
+    yaxis4=dict(showticklabels=False, showgrid=False, zeroline=False,
+                linecolor="#d4c9b8", linewidth=1),
+    xaxis4=dict(showticklabels=False, showgrid=False, zeroline=False,
+                linecolor="#d4c9b8", linewidth=1),
 )
 st.plotly_chart(fig_scatter, use_container_width=True)
 st.markdown(f"""<div class="fig-caption">
-  <b>Figure 11.</b> Scatter of {qmc_n} Sobol simulation paths across revenue growth and exit multiple,
-  colored by realized levered IRR. The correlation structure (ρ = {corr_coef:.1f}) between
-  growth and exit multiple is visible in the joint distribution. Green paths clear the 20% hurdle;
-  red paths fall below 12%. The base case is marked with a star.
+  <b>Figure 11.</b> Joint distribution of {qmc_n} Sobol paths across simulated revenue growth and exit
+  multiple, colored by realized levered IRR. Marginal box plots show the univariate spread of each
+  parameter. The Cholesky-induced correlation (ρ = {corr_coef:.1f}) between growth and exit multiple
+  is visible in the diagonal tilt of the point cloud. The base case is marked with a star.
 </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1301,29 +1389,41 @@ scenarios = [("Base case", entry_ev_ebitda, ebitda_entry, revenue_entry, debt_pc
                interest_rate, rev_growth, margin_expansion, capex_pct, amort_pct,
                exit_ev_ebitda, hold_years)]
 
-def scenario_inputs(col, label, idx):
-    with col:
-        st.markdown(f"**{label}**")
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            s_entry = st.number_input(f"Entry EV/EBITDA", value=entry_ev_ebitda,
-                                      step=0.5, min_value=4.0, max_value=30.0, key=f"s{idx}_entry")
-            s_debt  = st.slider(f"Debt/EV (%)", 30, 80, debt_pct, step=5, key=f"s{idx}_debt")
-        with c2:
-            s_grow  = st.slider(f"Rev growth (%/yr)", 0, 30, rev_growth, step=1, key=f"s{idx}_grow")
-            s_marg  = st.slider(f"Margin expansion (bps)", -100, 200, margin_expansion, step=10, key=f"s{idx}_marg")
-        with c3:
-            s_exit  = st.number_input(f"Exit EV/EBITDA", value=exit_ev_ebitda,
-                                      step=0.5, min_value=3.0, max_value=30.0, key=f"s{idx}_exit")
-            s_rate  = st.number_input(f"Interest rate (%)", value=interest_rate,
-                                      step=0.25, min_value=1.0, max_value=20.0, key=f"s{idx}_rate")
-        return (label, s_entry, ebitda_entry, revenue_entry, s_debt, s_rate,
-                s_grow, s_marg, capex_pct, amort_pct, s_exit, hold_years)
+# Scenario defaults: B = downside, C = upside
+_sc_defaults = {
+    2: dict(entry=min(entry_ev_ebitda + 2.0, 20.0), debt=min(debt_pct + 10, 80),
+            grow=max(rev_growth - 4, 0), marg=max(margin_expansion - 50, -100),
+            exit=max(exit_ev_ebitda - 2.0, 4.0), rate=min(interest_rate + 1.5, 15.0),
+            label="Scenario B — Downside"),
+    3: dict(entry=max(entry_ev_ebitda - 1.5, 5.0), debt=max(debt_pct - 5, 30),
+            grow=min(rev_growth + 4, 25), marg=min(margin_expansion + 75, 200),
+            exit=min(exit_ev_ebitda + 2.0, 22.0), rate=max(interest_rate - 0.5, 2.0),
+            label="Scenario C — Upside"),
+}
+
+def scenario_inputs(label, idx):
+    d = _sc_defaults[idx]
+    st.markdown(f"**{label}**")
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        s_entry = st.number_input("Entry EV/EBITDA", value=float(d["entry"]),
+                                  step=0.5, min_value=4.0, max_value=30.0, key=f"s{idx}_entry")
+        s_debt  = st.slider("Debt/EV (%)", 30, 80, int(d["debt"]), step=5, key=f"s{idx}_debt")
+    with c2:
+        s_grow  = st.slider("Rev growth (%/yr)", 0, 30, int(d["grow"]), step=1, key=f"s{idx}_grow")
+        s_marg  = st.slider("Margin expansion (bps)", -100, 200, int(d["marg"]), step=10, key=f"s{idx}_marg")
+    with c3:
+        s_exit  = st.number_input("Exit EV/EBITDA", value=float(d["exit"]),
+                                  step=0.5, min_value=3.0, max_value=30.0, key=f"s{idx}_exit")
+        s_rate  = st.number_input("Interest rate (%)", value=float(d["rate"]),
+                                  step=0.25, min_value=1.0, max_value=20.0, key=f"s{idx}_rate")
+    return (label, s_entry, ebitda_entry, revenue_entry, s_debt, s_rate,
+            s_grow, s_marg, capex_pct, amort_pct, s_exit, hold_years)
 
 with sc_col1:
-    sc2 = scenario_inputs(sc_col1, "Scenario B", 2)
+    sc2 = scenario_inputs(_sc_defaults[2]["label"], 2)
 with sc_col2:
-    sc3 = scenario_inputs(sc_col2, "Scenario C", 3)
+    sc3 = scenario_inputs(_sc_defaults[3]["label"], 3)
 
 all_scenarios = [scenarios[0], sc2, sc3]
 sc_results = []
