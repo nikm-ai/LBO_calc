@@ -471,7 +471,7 @@ r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(6)
 with r2c1: rev_growth       = st.slider("Revenue growth (%/yr)",          0, 30, 8,   step=1)
 with r2c2: margin_expansion = st.slider("Margin expansion (bps/yr)",    -100, 200, 50, step=10)
 with r2c3: capex_pct        = st.slider("CapEx (% of revenue)",           1, 15, 4,   step=1)
-with r2c4: amort_pct        = st.slider("Amortization (% initial debt)",  0, 20, 5,   step=1)
+with r2c4: amort_pct        = st.slider("Amortization (%)",  0, 20, 5,   step=1)
 with r2c5: exit_ev_ebitda   = st.number_input("Exit EV / EBITDA (x)",   value=11.0, step=0.5,  min_value=3.0,  max_value=30.0)
 with r2c6: hold_years       = st.slider("Holding period (years)",         3, 10, 5)
 
