@@ -218,12 +218,108 @@ st.markdown("""
   [data-testid="manage-app-button"] { display: none !important; }
   .stAppDeployButton { display: none !important; }
 
+  /* ── Number input: outer container ──────────────────────────────────── */
+  [data-testid="stNumberInput"] > div:first-of-type {
+    border: 1px solid rgba(180, 172, 155, 0.18) !important;
+    border-radius: 3px !important;
+    overflow: hidden !important;
+    transition: border-color 0.2s ease !important;
+    background: rgba(255,255,255,0.03) !important;
+  }
+  [data-testid="stNumberInput"] > div:first-of-type:focus-within {
+    border-color: rgba(212, 208, 200, 0.45) !important;
+    background: rgba(255,255,255,0.05) !important;
+  }
+
+  /* ── Number input: the text field ───────────────────────────────────── */
+  [data-testid="stNumberInputField"] {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 13px !important;
+    font-variant-numeric: tabular-nums !important;
+    letter-spacing: 0.02em !important;
+    color: #d4d0c8 !important;
+    background: transparent !important;
+    border: none !important;
+    padding: 0.45rem 0.6rem !important;
+  }
+
+  /* ── Step buttons: − and + ───────────────────────────────────────────── */
+  [data-testid="stNumberInputStepDown"],
+  [data-testid="stNumberInputStepUp"] {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 300 !important;
+    color: rgba(212, 208, 200, 0.5) !important;
+    background: rgba(255,255,255,0.04) !important;
+    border: none !important;
+    border-left: 1px solid rgba(180,172,155,0.12) !important;
+    border-radius: 0 !important;
+    width: 28px !important;
+    min-width: 28px !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+    padding: 0 !important;
+  }
+  [data-testid="stNumberInputStepDown"]:hover,
+  [data-testid="stNumberInputStepUp"]:hover {
+    background: rgba(212, 208, 200, 0.1) !important;
+    color: #d4d0c8 !important;
+  }
+  [data-testid="stNumberInputStepDown"]:active,
+  [data-testid="stNumberInputStepUp"]:active {
+    background: rgba(212, 208, 200, 0.18) !important;
+  }
+
+  /* ── Slider track ────────────────────────────────────────────────────── */
+  [data-testid="stSlider"] [data-baseweb="slider"] {
+    padding: 0 !important;
+  }
+  /* Track background */
+  [data-testid="stSlider"] [data-baseweb="slider"] > div > div {
+    background: rgba(180,172,155,0.15) !important;
+    height: 3px !important;
+    border-radius: 2px !important;
+  }
+  /* Track filled portion */
+  [data-testid="stSlider"] [data-baseweb="slider"] [data-testid="stSliderThumbValue"] ~ div,
+  [data-testid="stSlider"] [data-baseweb="slider"] > div > div > div:first-child {
+    background: rgba(212,208,200,0.55) !important;
+    border-radius: 2px !important;
+  }
+  /* Thumb */
+  [data-testid="stSlider"] [role="slider"] {
+    background: #d4d0c8 !important;
+    border: none !important;
+    width: 13px !important;
+    height: 13px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 0 0 rgba(212,208,200,0.2) !important;
+    transition: box-shadow 0.15s ease !important;
+  }
+  [data-testid="stSlider"] [role="slider"]:focus,
+  [data-testid="stSlider"] [role="slider"]:hover {
+    box-shadow: 0 0 0 4px rgba(212,208,200,0.18) !important;
+  }
+  /* Slider current value label */
+  [data-testid="stSlider"] [data-testid="stTickBarMin"],
+  [data-testid="stSlider"] [data-testid="stTickBarMax"],
+  [data-testid="stSlider"] [data-testid="stSliderThumbValue"] {
+    font-family: 'DM Sans', sans-serif !important;
+    font-size: 11px !important;
+    color: rgba(212,208,200,0.55) !important;
+    font-weight: 500 !important;
+    letter-spacing: 0.03em !important;
+  }
+
   /* Restored original param-table styles */
   .param-table {
     width: 100%; border-collapse: collapse;
     font-family: 'DM Sans', sans-serif; font-size: 12px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.5rem; border: none; outline: none;
   }
+  .param-table, .param-table * { box-sizing: border-box; }
+  div[data-testid="stMarkdownContainer"] table,
+  div[data-testid="stMarkdownContainer"] th,
+  div[data-testid="stMarkdownContainer"] td { border: none !important; }
   .param-table th {
     font-size: 9px; font-weight: 600; letter-spacing: 0.1em;
     text-transform: uppercase; opacity: 0.4; color: var(--text-color);
