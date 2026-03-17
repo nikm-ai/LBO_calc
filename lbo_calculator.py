@@ -554,16 +554,14 @@ st.markdown(f"""
 <div class="abstract-box" style="margin-top:2rem;">
   <div class="abstract-label">Transaction summary</div>
   <div class="abstract-text">
-    This model structures an acquisition of a business with {fmt_m(ebitda_entry)} of EBITDA at
-    an entry multiple of {entry_ev_ebitda:.1f}x, implying a total enterprise value of {fmt_m(purchase_price)}.
-    The transaction is financed with {fmt_m(debt_entry)} of debt ({debt_pct}% of EV) at {interest_rate:.2f}%
-    and {fmt_m(equity_entry)} of sponsor equity ({100-debt_pct}% of EV).
-    Over a {hold_years}-year holding period, EBITDA is projected to grow at a {fmt_pct(ebitda_cagr)} CAGR
-    to {fmt_m(exit_ebitda)}, with exit at {exit_ev_ebitda:.1f}x implying an exit enterprise value of {fmt_m(exit_ev)}.
-    After repaying {fmt_m(exit_debt)} of remaining debt, the sponsor realizes {fmt_m(exit_equity)} in proceeds.
-    The levered IRR is <b>{irr_str}</b> with a MOIC of <b>{moic:.2f}x</b>.
-    The unlevered IRR on the underlying business is <b>{irr_u_str}</b>, implying a leverage effect of
-    <b>{(irr_levered - irr_unlevered)*100:.1f} percentage points</b>.
+    At {entry_ev_ebitda:.1f}x entry on {fmt_m(ebitda_entry)} of EBITDA, the purchase price is {fmt_m(purchase_price)},
+    financed with {fmt_m(debt_entry)} of debt ({debt_pct}% of EV) at {interest_rate:.2f}% and {fmt_m(equity_entry)} of sponsor equity.
+    Over a {hold_years}-year hold, EBITDA is projected to grow at a {fmt_pct(ebitda_cagr)} CAGR
+    to {fmt_m(exit_ebitda)}. At {exit_ev_ebitda:.1f}x exit, enterprise value reaches {fmt_m(exit_ev)};
+    after repaying {fmt_m(exit_debt)} of remaining debt, the sponsor takes out {fmt_m(exit_equity)}.
+    The levered IRR is <b>{irr_str}</b> on a <b>{moic:.2f}x</b> MOIC.
+    The underlying business earns <b>{irr_u_str}</b> unlevered, putting the leverage contribution
+    at <b>{(irr_levered - irr_unlevered)*100:.1f} percentage points</b>.
   </div>
 </div>
 """, unsafe_allow_html=True)
@@ -1554,9 +1552,9 @@ multiple compression, which hurts returns.</div>
 <div class="appendix-term">Leveraged Buyout (LBO)</div>
 <div class="appendix-def">An acquisition where a large portion of the purchase price is
 financed with borrowed money rather than the buyer's own cash. The borrowed money is secured
-against the company's assets and is repaid using the company's future cash flows. The buyer
-puts in a smaller equity check, which means any gains in the company's value are amplified
-on that smaller investment.</div>
+against the company's assets and repaid from the company's future cash flows. The buyer
+contributes a smaller equity check, which means any gains in the company's value are
+amplified on that smaller investment.</div>
 
 <div class="appendix-term">Sponsor equity</div>
 <div class="appendix-def">The cash the private equity firm actually writes a check for.
@@ -1576,43 +1574,43 @@ firm receives its cash back.</div>
 <div class="appendix-def">The fraction of the purchase price funded by debt. At 60%, a
 $600M acquisition involves $360M of borrowed money and $240M of equity. Higher leverage
 amplifies returns when the business does well, but magnifies losses if it underperforms,
-and increases the risk that the company cannot service its interest payments.</div>
+and increases the risk the company cannot service its interest payments.</div>
 
 <div class="appendix-term">Net leverage (Debt/EBITDA)</div>
-<div class="appendix-def">Total debt divided by annual EBITDA. It answers the question:
-how many years of operating earnings would it take to pay off all the debt? Seven times
-is considered aggressive for most industries; below four times is generally comfortable.
-This ratio improves over the holding period as debt is paid down and EBITDA grows.</div>
+<div class="appendix-def">Total debt divided by annual EBITDA. It answers: how many years of
+operating earnings would it take to repay all the debt? Seven times is considered aggressive
+for most industries; below four times is generally comfortable. This ratio improves over the
+holding period as debt is paid down and EBITDA grows.</div>
 
 <div class="appendix-term">Interest coverage (EBITDA/Interest)</div>
-<div class="appendix-def">Annual EBITDA divided by annual interest expense. It measures
-how comfortably the business can pay its interest bill. A ratio of 2x means the company
-earns twice what it owes in interest each year. Below 1.5x, lenders get nervous.
-Above 3x is generally considered safe.</div>
+<div class="appendix-def">Annual EBITDA divided by annual interest expense. It measures how
+comfortably the business can pay its interest bill. A ratio of 2x means the company earns
+twice what it owes in interest each year. Below 1.5x, lenders get nervous; above 3x is
+generally considered safe.</div>
 
 <div class="appendix-term">Amortization</div>
-<div class="appendix-def">Scheduled repayments of debt principal over time. Unlike
-interest, which is an ongoing cost, amortization permanently reduces the debt balance.
-In this model, amortization is set as a fixed percentage of the original debt balance
-paid each year. Paying down debt is one of the three sources of equity return in an LBO.</div>
+<div class="appendix-def">Scheduled repayments of debt principal over time. Unlike interest,
+which is an ongoing cost, amortization permanently reduces the debt balance. In this model,
+amortization is set as a fixed annual percentage of the original debt balance. Paying down
+debt is one of the three sources of equity return in an LBO.</div>
 
 <div class="appendix-term">Free Cash Flow (FCF)</div>
-<div class="appendix-def">The cash a business generates after paying for operations,
-capital expenditures, interest, and taxes. In an LBO, FCF is what services and eventually
-retires the debt. The model computes levered FCF, meaning after all debt costs are deducted.
-A positive and growing FCF profile is the most important operational indicator in an LBO.</div>
+<div class="appendix-def">The cash a business generates after paying for operations, capital
+expenditures, interest, and taxes. In an LBO, FCF is what services and eventually retires the
+debt. The model computes levered FCF, meaning after all debt costs are deducted. A positive
+and growing FCF profile is the most important operational indicator in an LBO.</div>
 
 <div class="appendix-term">CapEx (Capital Expenditure)</div>
-<div class="appendix-def">Money spent on physical assets like equipment and infrastructure
-needed to run and grow the business. CapEx is deducted from earnings when calculating free
-cash flow because it is a real cash outflow, even though accounting treats it differently.
-Higher CapEx reduces the cash available to repay debt.</div>
+<div class="appendix-def">Money spent on physical assets needed to run and grow the business.
+CapEx is deducted from earnings when calculating free cash flow because it is a real cash
+outflow, even though accounting treats it differently. Higher CapEx reduces the cash
+available to repay debt.</div>
 
 <div class="appendix-term">NWC (Net Working Capital)</div>
-<div class="appendix-def">The cash tied up in the day-to-day operations of the business,
-such as money owed by customers minus money owed to suppliers. As a business grows, it
-typically needs to invest more cash in working capital, which reduces free cash flow.
-The model assumes working capital grows at 10% of incremental revenue.</div>
+<div class="appendix-def">The cash tied up in day-to-day operations, such as money owed by
+customers minus money owed to suppliers. As a business grows, it typically needs to invest
+more cash in working capital, which reduces free cash flow. The model assumes working
+capital grows at 10% of incremental revenue.</div>
 """, unsafe_allow_html=True)
 
 with app2:
@@ -1620,105 +1618,95 @@ with app2:
 <div class="appendix-group-head">Return metrics</div>
 
 <div class="appendix-term">IRR (Internal Rate of Return)</div>
-<div class="appendix-def">The annualized percentage return on an investment, accounting
-for the timing of cash flows. It answers: at what annual growth rate would my initial
-investment need to compound to match the actual outcome? An IRR of 20% means the equity
-grew at 20% per year over the holding period. Private equity firms generally target IRRs
-above 20% and consider anything below 15% marginal. IRR is sensitive to holding period:
-a 2.5x return over 3 years produces a much higher IRR than the same 2.5x return over 7 years.</div>
+<div class="appendix-def">The annualized return on an investment, accounting for the timing
+of cash flows. It answers: at what annual growth rate would the initial investment need to
+compound to match the actual outcome? An IRR of 20% means the equity grew at 20% per year
+over the holding period. PE firms generally target IRRs above 20% and consider anything
+below 15% marginal. IRR is sensitive to holding period: a 2.5x return over 3 years produces
+a much higher IRR than the same 2.5x return over 7 years.</div>
 
 <div class="appendix-term">MOIC (Multiple of Invested Capital)</div>
-<div class="appendix-def">Total cash returned divided by total cash invested, regardless
-of time. A MOIC of 2.58x means the sponsor received $2.58 for every dollar invested.
-Unlike IRR, MOIC does not account for how long it took to generate the return. A 3x MOIC
-is considered excellent; below 2x is generally below the hurdle for institutional investors.
-MOIC and IRR together paint a complete picture: high IRR on a small, fast deal can have
-a lower MOIC than a longer, larger deal with lower IRR.</div>
+<div class="appendix-def">Total cash returned divided by total cash invested, regardless of
+time. A MOIC of 2.58x means the sponsor received $2.58 for every dollar put in. Unlike IRR,
+MOIC does not account for how long the return took to generate. A 3x MOIC is considered
+excellent; below 2x is generally below hurdle for institutional investors. The two metrics
+together paint a complete picture: a fast, small deal can have high IRR but modest MOIC,
+while a larger deal with a longer hold can show the reverse.</div>
 
 <div class="appendix-term">Levered IRR</div>
-<div class="appendix-def">The IRR calculated on the equity investment only, after
-accounting for the effect of debt. Because the equity check is smaller than the total
-enterprise value, leverage amplifies this return when the business performs well.
-This is the primary return metric reported to LBO investors.</div>
+<div class="appendix-def">The IRR calculated on the equity investment only, after accounting
+for debt. Because the equity check is smaller than the total enterprise value, leverage
+amplifies this return when the business performs well. This is the primary return metric
+reported to LBO investors.</div>
 
 <div class="appendix-term">Unlevered IRR</div>
-<div class="appendix-def">The return on the underlying business as if it had been
-purchased entirely with equity and no debt. This is equivalent to asking: how well
-did the business itself perform, separate from the financing structure? The difference
-between the levered and unlevered IRR is the leverage effect. When the unlevered IRR
-exceeds the cost of debt, leverage is accretive. When the cost of debt exceeds the
-business return, leverage destroys value.</div>
+<div class="appendix-def">The return on the underlying business as if it had been purchased
+entirely with equity and no debt. The difference between the levered and unlevered IRR is the
+leverage effect. When the unlevered IRR exceeds the cost of debt, leverage is accretive.
+When the cost of debt exceeds the business return, leverage destroys value.</div>
 
 <div class="appendix-term">IRR Sharpe ratio</div>
-<div class="appendix-def">A risk-adjusted return metric borrowed from portfolio theory.
-It is calculated as (median simulated IRR minus cost of debt) divided by the standard
-deviation of simulated IRRs. A higher ratio means more return per unit of uncertainty.
-This metric is most useful for comparing two deals where one has higher expected
-returns but also higher dispersion of outcomes.</div>
+<div class="appendix-def">A risk-adjusted return metric from portfolio theory, calculated as
+(median simulated IRR minus cost of debt) divided by the standard deviation of simulated
+IRRs. A higher ratio means more return per unit of uncertainty. Most useful for comparing
+two deals where one offers higher expected returns but also wider dispersion of outcomes.</div>
 
 <div class="appendix-group-head">Sources of equity return</div>
 
 <div class="appendix-term">EBITDA growth contribution</div>
-<div class="appendix-def">The portion of equity gain attributable to the business
-earning more at exit than at entry. If a company's EBITDA grows from $50M to $80M and
-the exit multiple stays constant at 11x, enterprise value rises by $330M from EBITDA
-growth alone. This is typically the largest and most controllable return driver.</div>
+<div class="appendix-def">The share of equity gain from the business earning more at exit
+than at entry. If EBITDA grows from $50M to $80M with the exit multiple constant at 11x,
+enterprise value rises $330M from EBITDA growth alone. This is typically the largest and
+most controllable return driver.</div>
 
 <div class="appendix-term">Multiple expansion / compression</div>
-<div class="appendix-def">The gain or loss in enterprise value from a change in the
-earnings multiple between entry and exit. If a business is bought at 12x EBITDA and
-sold at 14x, the buyer benefits from multiple expansion even if EBITDA did not change.
-Multiple expansion is the most unpredictable return driver and is largely a function
-of market conditions at the time of sale.</div>
+<div class="appendix-def">The gain or loss in enterprise value from a change in the earnings
+multiple between entry and exit. If a business is bought at 12x and sold at 14x, the buyer
+benefits from multiple expansion even if EBITDA did not change. Multiple expansion is the
+most unpredictable return driver, largely a function of market conditions at the time of sale.</div>
 
 <div class="appendix-term">Debt paydown contribution</div>
-<div class="appendix-def">The equity value created simply by paying down debt over the
-holding period. Every dollar of principal repaid is a dollar that does not need to be
-deducted from the exit enterprise value when computing equity proceeds. In a standard
-five-year hold with 5% annual amortization, the sponsor pays down 25% of the original
-debt, which accrues directly to equity value at exit.</div>
+<div class="appendix-def">The equity value created by paying down debt over the hold. Every
+dollar of principal repaid is a dollar that does not need to be deducted from exit enterprise
+value when computing equity proceeds. In a five-year hold with 5% annual amortization, the
+sponsor retires 25% of original debt, which flows directly to equity value at exit.</div>
 
 <div class="appendix-group-head">Risk simulation methodology</div>
 
 <div class="appendix-term">Monte Carlo simulation</div>
-<div class="appendix-def">A technique for understanding the range of possible outcomes
-by running thousands of scenarios with randomly drawn inputs. Instead of computing a
-single IRR for one set of assumptions, Monte Carlo runs the same model thousands of times,
-each with slightly different values for growth, margins, interest rates, and so on.
-The resulting distribution of IRRs shows not just the expected outcome but also the
-realistic best and worst cases.</div>
+<div class="appendix-def">A way of understanding the range of possible outcomes by running
+many scenarios with randomly drawn inputs. Instead of computing a single IRR for one set of
+assumptions, Monte Carlo runs the same model thousands of times with slightly different
+values each time. The resulting distribution of IRRs shows not just the expected outcome but
+also the realistic upside and downside.</div>
 
 <div class="appendix-term">Quasi-Monte Carlo (QMC) and Sobol sequences</div>
-<div class="appendix-def">A more efficient version of Monte Carlo simulation. Standard
-Monte Carlo draws inputs randomly, which means some regions of the parameter space get
-sampled many times while others are missed. Sobol sequences use a mathematical
-construction to spread the samples as evenly as possible across the parameter space,
-like a perfectly spaced grid rather than random scatter. This means 512 Sobol samples
-produce results nearly as accurate as 5,000 or more standard random samples.</div>
+<div class="appendix-def">A more efficient version of Monte Carlo. Standard Monte Carlo draws
+inputs randomly, so some regions of the parameter space get sampled repeatedly while others
+are missed. Sobol sequences spread the samples as evenly as possible across the parameter
+space, like a precisely spaced grid rather than random scatter. The result is that 512 Sobol
+samples produce answers nearly as accurate as 5,000 or more standard random samples.</div>
 
 <div class="appendix-term">Correlated parameters (Cholesky method)</div>
-<div class="appendix-def">In reality, some model inputs move together. Businesses that
-grow faster tend to command higher exit multiples, for example. The Cholesky method is
-a standard mathematical technique for generating random samples that respect a specified
-correlation structure. In this model, the correlation between revenue growth and exit
-multiple can be adjusted using the slider in Section 9. A positive correlation means
-fast-growing simulated paths also tend to exit at higher multiples.</div>
+<div class="appendix-def">In practice, some model inputs move together: faster-growing
+businesses tend to command higher exit multiples. The Cholesky method generates random
+samples that respect a specified correlation structure. In this model, the correlation
+between revenue growth and exit multiple is adjustable in Section 9; a positive value means
+high-growth simulated paths also tend to exit at higher multiples.</div>
 
 <div class="appendix-term">Value at Risk (VaR) and percentile metrics</div>
-<div class="appendix-def">In the simulation output, the 5th percentile IRR is the
-value-at-risk equivalent: in 95 out of 100 simulated scenarios, the IRR exceeds this
-number. It is a downside floor, not a worst-case scenario. The P10 MOIC is the 10th
-percentile of MOIC outcomes, meaning 90% of simulated paths produce a MOIC above
-this level. These metrics help investors understand the downside without fixating on
-the extreme tail.</div>
+<div class="appendix-def">The 5th percentile IRR in the simulation is the value-at-risk
+equivalent: in 95 out of 100 scenarios, the IRR exceeds this number. It is a downside floor,
+not a worst case. The P10 MOIC is the 10th percentile of MOIC outcomes, meaning 90% of
+simulated paths land above it. These metrics frame the downside without fixating on the
+extreme tail.</div>
 
 <div class="appendix-term">Gaussian KDE (kernel density estimate)</div>
-<div class="appendix-def">The smooth curved line drawn over the histogram in Figures
-9 and 10. A histogram groups outcomes into bins and counts how many fall in each bin,
-which can look ragged with a limited number of samples. A kernel density estimate fits
-a smooth curve through the same data, giving a better visual sense of the underlying
-distribution shape. The Silverman bandwidth rule used here is the standard method
-for choosing how smooth the curve should be.</div>
+<div class="appendix-def">The smooth curve drawn over the histograms in Figures 9 and 10.
+A histogram groups outcomes into bins and counts how many fall in each, which can look
+ragged with a limited number of samples. A kernel density estimate fits a smooth curve
+through the same data, giving a cleaner sense of the distribution shape. The Silverman
+bandwidth rule determines how smooth the curve should be.</div>
 
 <div class="appendix-note">
   All model outputs are for educational and illustrative purposes only and do not
