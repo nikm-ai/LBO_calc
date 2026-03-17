@@ -97,10 +97,10 @@ st.markdown("""
   }
   .sec-header {
     font-family: 'DM Sans', sans-serif;
-    font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--text-color); opacity: 0.4;
-    margin: 2.5rem 0 0.75rem; padding-bottom: 5px;
-    border-bottom: 1px solid rgba(128,128,128,0.15);
+    font-size: 13px; font-weight: 600; letter-spacing: 0.09em;
+    text-transform: uppercase; color: var(--text-color); opacity: 0.55;
+    margin: 2.5rem 0 0.85rem; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(128,128,128,0.18);
   }
   .kpi-card {
     border: 1px solid rgba(128,128,128,0.15);
@@ -214,12 +214,30 @@ st.markdown("""
     opacity: 0.7; font-style: italic; margin-top: 1.5rem;
   }
 
-  /* Editor hint */
-  .param-hint {
-    font-family: 'DM Sans', sans-serif;
-    font-size: 11px; color: var(--text-color); opacity: 0.45;
-    margin-bottom: 0.6rem; font-style: italic;
+  /* Hide Streamlit manage-app button */
+  [data-testid="manage-app-button"] { display: none !important; }
+  .stAppDeployButton { display: none !important; }
+
+  /* Restored original param-table styles */
+  .param-table {
+    width: 100%; border-collapse: collapse;
+    font-family: 'DM Sans', sans-serif; font-size: 12px;
+    margin-bottom: 0.5rem;
   }
+  .param-table th {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.1em;
+    text-transform: uppercase; opacity: 0.4; color: var(--text-color);
+    border-bottom: 1px solid rgba(128,128,128,0.2);
+    padding: 6px 10px 6px 0; text-align: left;
+  }
+  .param-table td {
+    padding: 5px 10px 5px 0;
+    border-bottom: 1px solid rgba(128,128,128,0.07);
+    color: var(--text-color); font-size: 12px; vertical-align: top;
+  }
+  .param-name  { font-weight: 500; }
+  .param-def   { opacity: 0.6; font-size: 11px; font-family: 'EB Garamond', Georgia, serif; font-style: italic; }
+  .param-value { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -338,145 +356,81 @@ with col_e3:
     </div>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
-# CHANGE 2: EDITABLE PARAMETER TABLE
-# Replaces all sliders and number_input widgets with a single st.data_editor.
-# The "Value" column is editable; Parameter and Definition columns are read-only.
+# PARAMETERS — original slider/number_input widgets + styled HTML glossary
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown('<div class="sec-header">Model parameters</div>', unsafe_allow_html=True)
-st.markdown("""<div class="explainer-body" style="margin-bottom:0.5rem;">
-  Edit the <strong>Value</strong> column directly to adjust any parameter.
-  All outputs and charts update immediately on change.
+st.markdown("""<div class="explainer-body" style="margin-bottom:1rem;">
+  Adjust the parameters below to model different transaction structures. All figures in USD millions.
+  The model recomputes all outputs, projections, and sensitivity tables in real time.
 </div>""", unsafe_allow_html=True)
-st.markdown('<div class="param-hint">Click any cell in the Value column to edit. Press Enter or Tab to confirm.</div>', unsafe_allow_html=True)
 
-# Default parameter values
-_PARAM_DEFAULTS = {
-    "Entry EV / EBITDA (x)":          12.0,
-    "Entry EBITDA ($M)":               50.0,
-    "Entry revenue ($M)":             200.0,
-    "Debt / EV (%)":                   60.0,
-    "Interest rate (%)":                7.0,
-    "Revenue growth (%/yr)":            8.0,
-    "Margin expansion (bps/yr)":       50.0,
-    "CapEx (% of revenue)":             4.0,
-    "Amortization (% initial debt/yr)": 5.0,
-    "Exit EV / EBITDA (x)":           11.0,
-    "Holding period (years)":           5.0,
-    "Tax rate (%)":                    25.0,
-}
+r1c1, r1c2, r1c3, r1c4, r1c5 = st.columns(5)
+with r1c1: entry_ev_ebitda = st.number_input("Entry EV / EBITDA (x)",  value=12.0, step=0.5,  min_value=4.0,  max_value=30.0)
+with r1c2: ebitda_entry    = st.number_input("Entry EBITDA ($M)",       value=50.0, step=5.0,  min_value=1.0)
+with r1c3: revenue_entry   = st.number_input("Entry revenue ($M)",      value=200.0, step=10.0, min_value=1.0)
+with r1c4: debt_pct        = st.slider("Debt / EV (%)",                  30, 80, 60, step=5)
+with r1c5: interest_rate   = st.number_input("Interest rate (%)",        value=7.0,  step=0.25, min_value=1.0,  max_value=20.0)
 
-_PARAM_DEFINITIONS = {
-    "Entry EV / EBITDA (x)":
-        "Purchase price as a multiple of trailing EBITDA. Typical LBO entries range 7x–14x depending on sector and auction dynamics.",
-    "Entry EBITDA ($M)":
-        "Earnings before interest, taxes, depreciation, and amortization at acquisition. Primary valuation anchor and debt-sizing metric.",
-    "Entry revenue ($M)":
-        "Total revenue at acquisition, used to compute the initial EBITDA margin and project forward revenue under the growth assumption.",
-    "Debt / EV (%)":
-        "Fraction of total enterprise value financed with debt at entry. Higher leverage amplifies returns when business return > cost of debt.",
-    "Interest rate (%)":
-        "Blended annual interest rate on all debt tranches. The hurdle below which the business must generate returns for leverage to be accretive.",
-    "Revenue growth (%/yr)":
-        "Projected annual revenue growth rate applied uniformly over the holding period. Drives EBITDA growth alongside margin expansion.",
-    "Margin expansion (bps/yr)":
-        "Annual improvement in EBITDA margin in basis points. Reflects operational improvements, pricing power, or cost reductions.",
-    "CapEx (% of revenue)":
-        "Capital expenditure as a percentage of revenue, deducted from EBITDA to compute free cash flow.",
-    "Amortization (% initial debt/yr)":
-        "Annual mandatory principal repayment as a percentage of initial debt balance. Reduces outstanding debt and interest expense over time.",
-    "Exit EV / EBITDA (x)":
-        "Multiple at which the business is sold. Compression (exit < entry) destroys value; expansion amplifies returns.",
-    "Holding period (years)":
-        "Years between acquisition and exit. Longer holds allow more time for operational improvement and debt paydown.",
-    "Tax rate (%)":
-        "Effective corporate income tax rate. Determines the tax shield value of interest deductions and after-tax cash flow for debt service.",
-}
+r2c1, r2c2, r2c3, r2c4, r2c5, r2c6 = st.columns(6)
+with r2c1: rev_growth       = st.slider("Revenue growth (%/yr)",          0, 30, 8,   step=1)
+with r2c2: margin_expansion = st.slider("Margin expansion (bps/yr)",    -100, 200, 50, step=10)
+with r2c3: capex_pct        = st.slider("CapEx (% of revenue)",           1, 15, 4,   step=1)
+with r2c4: amort_pct        = st.slider("Amortization (% initial debt)",  0, 20, 5,   step=1)
+with r2c5: exit_ev_ebitda   = st.number_input("Exit EV / EBITDA (x)",   value=11.0, step=0.5,  min_value=3.0,  max_value=30.0)
+with r2c6: hold_years       = st.slider("Holding period (years)",         3, 10, 5)
 
-_PARAM_MINS = {
-    "Entry EV / EBITDA (x)": 4.0,
-    "Entry EBITDA ($M)": 1.0,
-    "Entry revenue ($M)": 1.0,
-    "Debt / EV (%)": 10.0,
-    "Interest rate (%)": 1.0,
-    "Revenue growth (%/yr)": 0.0,
-    "Margin expansion (bps/yr)": -200.0,
-    "CapEx (% of revenue)": 0.0,
-    "Amortization (% initial debt/yr)": 0.0,
-    "Exit EV / EBITDA (x)": 3.0,
-    "Holding period (years)": 2.0,
-    "Tax rate (%)": 0.0,
-}
-_PARAM_MAXS = {
-    "Entry EV / EBITDA (x)": 30.0,
-    "Entry EBITDA ($M)": 10000.0,
-    "Entry revenue ($M)": 50000.0,
-    "Debt / EV (%)": 85.0,
-    "Interest rate (%)": 25.0,
-    "Revenue growth (%/yr)": 50.0,
-    "Margin expansion (bps/yr)": 500.0,
-    "CapEx (% of revenue)": 50.0,
-    "Amortization (% initial debt/yr)": 30.0,
-    "Exit EV / EBITDA (x)": 30.0,
-    "Holding period (years)": 15.0,
-    "Tax rate (%)": 60.0,
-}
-
-param_df = pd.DataFrame({
-    "Parameter": list(_PARAM_DEFAULTS.keys()),
-    "Value": list(_PARAM_DEFAULTS.values()),
-    "Definition": [_PARAM_DEFINITIONS[k] for k in _PARAM_DEFAULTS.keys()],
-})
-
-edited_df = st.data_editor(
-    param_df,
-    use_container_width=True,
-    hide_index=True,
-    num_rows="fixed",
-    column_config={
-        "Parameter": st.column_config.TextColumn(
-            "Parameter",
-            disabled=True,
-            width="medium",
-        ),
-        "Value": st.column_config.NumberColumn(
-            "Value",
-            help="Click to edit. Press Enter to apply.",
-            format="%.2f",
-            width="small",
-        ),
-        "Definition": st.column_config.TextColumn(
-            "Definition",
-            disabled=True,
-            width="large",
-        ),
-    },
-    key="param_editor",
-)
-
-# Unpack edited values to named variables (same names as original code)
-def _pv(name):
-    """Get current value for a parameter by name."""
-    row = edited_df[edited_df["Parameter"] == name]
-    if len(row):
-        return float(row["Value"].iloc[0])
-    return _PARAM_DEFAULTS[name]
-
-entry_ev_ebitda = _pv("Entry EV / EBITDA (x)")
-ebitda_entry    = _pv("Entry EBITDA ($M)")
-revenue_entry   = _pv("Entry revenue ($M)")
-debt_pct        = _pv("Debt / EV (%)")
-interest_rate   = _pv("Interest rate (%)")
-rev_growth      = _pv("Revenue growth (%/yr)")
-margin_expansion= _pv("Margin expansion (bps/yr)")
-capex_pct       = _pv("CapEx (% of revenue)")
-amort_pct       = _pv("Amortization (% initial debt/yr)")
-exit_ev_ebitda  = _pv("Exit EV / EBITDA (x)")
-hold_years      = int(_pv("Holding period (years)"))
-tax_rate        = _pv("Tax rate (%)")
-
-# Fixed / derived
 nwc_pct  = 10
+tax_rate = 25
 da_pct   = 3
+
+# ── Parameter glossary (styled HTML table, two-column layout) ──────────────
+st.markdown('<div class="sec-header">Parameter definitions</div>', unsafe_allow_html=True)
+
+params_left = [
+    ("Entry EV / EBITDA", f"{entry_ev_ebitda:.1f}x",
+     "The purchase price expressed as a multiple of the target's trailing twelve-month EBITDA. Typical LBO entry multiples range from 7x to 14x depending on sector and market conditions."),
+    ("Entry EBITDA", fmt_m(ebitda_entry),
+     "Earnings before interest, taxes, depreciation, and amortization at the time of acquisition. Serves as the primary valuation anchor and debt sizing metric."),
+    ("Entry revenue", fmt_m(revenue_entry),
+     "Total revenue at acquisition, used to compute the initial EBITDA margin and project forward revenue under the growth assumption."),
+    ("Debt / EV", f"{debt_pct}%",
+     "The proportion of the total enterprise value financed with debt at entry. Higher leverage amplifies equity returns when the business return exceeds the cost of debt, but increases default risk."),
+    ("Interest rate", f"{interest_rate:.2f}%",
+     "The blended annual interest rate on all debt tranches. Represents the hurdle rate below which the underlying business must generate returns for leverage to be accretive."),
+    ("Amortization", f"{amort_pct}%/yr",
+     "Annual mandatory principal repayment as a percentage of the initial debt balance. Reduces outstanding debt and interest expense over the holding period."),
+]
+params_right = [
+    ("Revenue growth", f"{rev_growth}%/yr",
+     "Projected annual revenue growth rate, applied uniformly over the holding period. Drives EBITDA growth alongside margin expansion."),
+    ("Margin expansion", f"{margin_expansion} bps/yr",
+     "Annual improvement in EBITDA margin, in basis points. Reflects operational improvements, pricing power, or cost reduction initiatives."),
+    ("CapEx", f"{capex_pct}% of rev.",
+     "Capital expenditure as a percentage of revenue, deducted from EBITDA to compute free cash flow."),
+    ("Exit EV / EBITDA", f"{exit_ev_ebitda:.1f}x",
+     "The multiple at which the business is sold. Multiple compression (exit < entry) destroys value; expansion amplifies it."),
+    ("Holding period", f"{hold_years} yrs",
+     "The number of years between acquisition and exit. Longer holds allow more time for operational improvement and debt paydown."),
+    ("Tax rate", f"{tax_rate}%",
+     "Effective corporate income tax rate. Determines the tax shield value of interest deductions and the after-tax cash flow available for debt service."),
+]
+
+gl1, gl2 = st.columns(2)
+for col, params in [(gl1, params_left), (gl2, params_right)]:
+    with col:
+        rows = ""
+        for name, val, defn in params:
+            rows += f"""<tr>
+              <td class="param-name">{name}</td>
+              <td class="param-value">{val}</td>
+              <td class="param-def">{defn}</td>
+            </tr>"""
+        st.markdown(f"""<table class="param-table">
+          <thead><tr>
+            <th style="width:18%;">Parameter</th>
+            <th style="width:10%;">Value</th>
+            <th>Definition</th>
+          </tr></thead><tbody>{rows}</tbody></table>""", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════
 # MODEL ENGINE (unchanged)
